@@ -1,4 +1,4 @@
-import Esp32 from "../models/Esp32.js";
+import Esp32 from "../models/esp32.js";
 import Pond from "../models/Pond.js";
 import { CreateSuccess } from "../utils/success.js";
 import { CreateError } from "../utils/error.js";
