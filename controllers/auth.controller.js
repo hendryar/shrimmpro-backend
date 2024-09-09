@@ -170,9 +170,9 @@ export const login = async (req, res, next) => {
       }
     );
     //Returns the token as a cookie to the browser.
-    res.cookie("access_token", token, { httpOnly: true }).status(200).json({
+    res.cookie("session_token", token, { httpOnly: true }).status(200).json({
       message: "Logged in successfully!",
-      token: token,
+      session_token: token,
       status: 200,
     });
   } catch (error) {
@@ -209,7 +209,7 @@ export const update = async (req, res, next) => {
     // Retrieve all field values without having to manually retrieve them
     const getFieldValue = (fieldValue) => Array.isArray(fieldValue) ? fieldValue[0] : fieldValue;
 
-    const token = getFieldValue(fields.token);
+    const token = getFieldValue(fields.session_token);
     const userId = getFieldValue(fields.userId);
 
     // Decode the token
@@ -319,10 +319,76 @@ export const update = async (req, res, next) => {
 //Clears the cookie from the browser.
 export const logout = async (req, res, next) => {
   try {
-    res.clearCookie("access_token").status(200).json({
+
+    res.clearCookie("session_token").status(200).json({
       message: "Logged out successfully!",
+
     });
   } catch (error) {
     return next(CreateError(500, error));
   }
 };
+
+
+
+//Deletes a user from the database
+
+export const deleteUser = async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndDelete(req.body.userId);
+    //check from the token received that the user is an admin
+    //if not, return an error
+    const decoded = jwt.verify(req.body.session_token, process.env.TOKEN_SECRET);
+    //also check if the decoded token is still valid.
+    const currentTime = new Date().getTime();
+    if (decoded.exp * 1000 < currentTime) {
+      return res.status(403).json(CreateError(403, "Token expired"));
+    }
+    if (decoded.roles !== 'admin') {
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    }
+    if (!user) {
+      return res.status(404).json(CreateError(404, "User not found"));
+    }
+    return res.status(200).json(CreateSuccess(200, "User deleted successfully", user));
+  } catch (error) {
+    return next(CreateError(500, error));
+  }
+}
+
+//Retreives all USER ID along with their email, email, and picture.
+export const getAllUsers = async (req, res, next) => {
+  try {
+    //check from the token received that the user is an admin
+    //if not, return an error
+    const decoded = jwt.verify(req.body.session_token, process.env.TOKEN_SECRET);
+    //also check if the decoded token is still valid.
+    const currentTime = new Date().getTime();
+    if (decoded.exp * 1000 < currentTime) {
+      return res.status(403).json(CreateError(403, "Token expired"));
+    }
+    if (decoded.roles !== 'admin') {
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    }
+    const users = await User.find({}, { password: 0, __v: 0, updatedAt: 0 });
+    return res.status(200).json(CreateSuccess(200, "Users retrieved successfully", users));
+  } catch (error) {
+    return next(CreateError(500, error));
+  }
+}
+
+//Retreive all information regarding a user, without their password.
+
+export const getUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.body.userId, { password: 0, __v: 0, updatedAt: 0 });
+    if (!user) {
+      return res.status(404).json(CreateError(404, "User not found"));
+    }
+    return res.status(200).json(CreateSuccess(200, "User retrieved successfully", user));
+  }
+  catch (error) {
+    return next(CreateError(500, error));
+  }
+}
+
