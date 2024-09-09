@@ -170,9 +170,9 @@ export const login = async (req, res, next) => {
       }
     );
     //Returns the token as a cookie to the browser.
-    res.cookie("access_token", token, { httpOnly: true }).status(200).json({
+    res.cookie("session_token", token, { httpOnly: true }).status(200).json({
       message: "Logged in successfully!",
-      token: token,
+      session_token: token,
       status: 200,
     });
   } catch (error) {
@@ -319,8 +319,10 @@ export const update = async (req, res, next) => {
 //Clears the cookie from the browser.
 export const logout = async (req, res, next) => {
   try {
-    res.clearCookie("access_token").status(200).json({
+
+    res.clearCookie("session_token").status(200).json({
       message: "Logged out successfully!",
+
     });
   } catch (error) {
     return next(CreateError(500, error));

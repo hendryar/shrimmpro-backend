@@ -1,6 +1,6 @@
 //Authentication routes used to handle all authentication related requests.
 import express from "express";
-import { checkEmail, register, login, update} from "../controllers/auth.controller.js";
+import { checkEmail, register, login, update, logout} from "../controllers/auth.controller.js";
 import bodyParser from "body-parser";
 
 const router = express.Router();
@@ -11,6 +11,8 @@ const jsonParser = bodyParser.json();
 router.post('/check', jsonParser, checkEmail);
 router.post('/register', register);
 router.post('/login', login);
-router.post('/update', update)
+router.post('/update', update);
+router.post('/delete', update);
+router.post('/logout', logout);
 
 export default router;
