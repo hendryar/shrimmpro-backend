@@ -39,7 +39,8 @@ const UserSchema = mongoose.Schema({
         max: 300,
     },
     userimg: {
-        type: String
+        type: String,
+        default: null,
     }
 
 }, {timestamps: true});
