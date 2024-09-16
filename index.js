@@ -133,29 +133,3 @@ import Esp32 from './models/esp32.js';
 //     });
 //   })();
 
-
-// Use dynamic import for node-cron
-(async () => {
-  const cron = await import('node-cron');
-
-  // Start the cron job to check for new Esp32 documents every minute
-  cron.schedule('* * * * *', async () => {
-    try {
-      // ... your other logic
-
-      // Retrieve pondId from the request query parameters (assuming you're sending it from the front-end)
-      const pondId = req.query.pondId;
-
-      // ... rest of your cron job logic
-      const latestEsp32 = await Esp32.findOne({ pondId }).sort({ createdAt: -1 }).lean();
-
-      // ... emit temperature data
-      getLatestPondTemperature(latestEsp32, server.io);
-      getLatestPondPh(latestEsp32, server.io); // Pass io instance here
-      getLatestPondHeight(latestEsp32, server.io); // Pass io instance here
-      getLatestPondTds(latestEsp32, server.io); // Pass io instance here
-    } catch (error) {
-      console.error('Error fetching latest Esp32 data:', error);
-    }
-  });
-})();

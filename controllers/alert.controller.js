@@ -89,3 +89,6 @@ exports.findReports = (req, res) => {
             });
         });
 };
+
+
+//Cron jobs to automatically check for alerts

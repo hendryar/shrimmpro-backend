@@ -19,7 +19,7 @@ const moveAndRenameFile = (fileArray, targetDir) => {
   //Checks if array received is not empty or invalid.
   if (!fileArray || fileArray.length === 0 || !fileArray[0]) {
       console.error("File array is empty or invalid.");
-      return undefined;
+      return null;
   }
   const file = fileArray[0];
   //Checks if the file object is valid and has the required properties.
@@ -93,7 +93,7 @@ export const register = async (req, res, next) => {
     try {
       const doesEmailExist = await User.findOne({ email });
       if (doesEmailExist) {
-        return res.status(403).json(CreateError(400, "Email already taken"));
+        return res.status(403).json(CreateError(403, "Email already taken"));
       }
     } catch (error) {
       console.error("Error checking email:", error);
@@ -111,6 +111,7 @@ export const register = async (req, res, next) => {
     }
     //Moves then renames the uploaded user image (if it exists).
     const newUserImgName = await moveAndRenameFile(files.userImg, uploadDir);
+
     //Creates a new user object with the required fields.
     //Then saves the user into the db.
     const user = new User({
@@ -142,7 +143,7 @@ export const login = async (req, res, next) => {
     //Returns an error if the email is not found.
     const user = await User.findOne({ email: req.body.email });
     if (!user) {
-      return res.status(404).json(CreateError(400, "Email is not found"));
+      return res.status(404).json(CreateError(404, "Email is not found"));
     }
     //Compare the password provided with the one in the database.
     const validPassword = await bcrypt.compare(
@@ -196,15 +197,16 @@ export const update = async (req, res, next) => {
     multiples: true,
     uploadDir,
     keepExtensions: true,
-    maxFileSize: 50 * 1024 * 1024, // Increase file size limit if necessary
-    maxFieldsSize: 50 * 1024 * 1024, // Increase fields size limit if necessary
-    maxFields: 1000, // Increase max fields limit if necessary
+    maxFileSize: 50 * 1024 * 1024,
+    maxFieldsSize: 50 * 1024 * 1024, 
+    maxFields: 1000, 
   });
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
       console.error("Form parse error:", err);
-      return next(CreateError(500, "Could not update user", err));
+      // return next(CreateError(500, "Could not update user", err));
+      return res.status(500).json(CreateError(500, "Could not update user", err));
     }
     // Retrieve all field values without having to manually retrieve them
     const getFieldValue = (fieldValue) => Array.isArray(fieldValue) ? fieldValue[0] : fieldValue;
@@ -240,7 +242,8 @@ export const update = async (req, res, next) => {
       }
     } catch (error) {
       console.error("Error retrieving user:", error);
-      return next(CreateError(500, "Internal Server Error", error));
+      // return next(CreateError(500, "Internal Server Error", error));
+      return res.status(500).json(CreateError(500, "Internal Server Error", error));
     }
 
     const email = getFieldValue(fields.email);
@@ -250,7 +253,11 @@ export const update = async (req, res, next) => {
       try {
         const doesEmailExist = await User.findOne({ email });
         if (doesEmailExist) {
-          return res.status(400).json(CreateError(400, "Email already taken"));
+          if(doesEmailExist._id != userId){
+            console.log("ID di DB:  ", doesEmailExist._id);
+            console.log("ID yang diinput:  ", userId);
+            return res.status(403).json(CreateError(403, "Email already taken"));
+          }
         }
       } catch (error) {
         console.error("Error checking email:", error);
