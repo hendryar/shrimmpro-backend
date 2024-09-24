@@ -17,6 +17,14 @@ export const create = (req, res) => {
         res.status(400).json(CreateError(400, "Name can not be empty!"));
         return null;
     }
+
+    //validate if an esp32 is already connected to the pond
+    Pond.find({connectedEsp32Serial: esp32Serial, connectedEsp32Passkey: esp32Passkey})
+        .then(data => {
+            if (data.length > 0) {
+                return res.status(400).json(CreateError(400, "ESP32 already connected to another Pond!"));
+            }
+        })
     //validate if req.body.name is already in the database
     Pond.find({name: req.body.name})
         .then(data => {
@@ -264,6 +272,14 @@ export const addEspToPond = (req, res) => {
     console.log("id: ", id);
     console.log("esp32Serial: ", esp32Serial);
     console.log("esp32Passkey: ", esp32Passkey);
+
+    //find if any pond has the same serial number and passkey, if yes, return error
+    Pond.find({connectedEsp32Serial: esp32Serial, connectedEsp32Passkey: esp32Passkey})
+        .then(data => {
+            if (data.length > 0) {
+                return res.status(400).json(CreateError(400, "ESP32 already connected to another Pond!"));
+            }
+        })
 
     console.log("start find and update");
     Pond.findByIdAndUpdate(id, {
@@ -880,264 +896,3 @@ export const getReadingById = (req, res) => {
             res.status(500).json(CreateError(500, "Some error occurred while retrieving the Reading.", err));
         });
 }
-
-
-
-
-
-//TODO: AMBIL SPESIFIK DATA YANG MAU DIAMBIL AJA< SAMA CREATED AT< MUNGKIN SEKALIAN POND IDNYA
-
-// //retrive pond TDS based on the timestamps provided (start date and end date, can be used accordingly)
-// export const getPondTdsTime = (req, res) => {
-//     const id = req.body.pondId;
-//     const startTime = new Date(parseInt(req.body.startTime) * 1000);
-//     const endTime = new Date(parseInt(req.body.endTime) * 1000);
-//     if (startTime >= endTime) {
-//         return res.status(601).json(CreateError(601, "Start date must be before end date!"));
-//     }
-
-//     Pond.findById(id)
-//         .then(pond => {
-//             if (!pond) {
-//                 res.status(404).json(CreateError(404, "Pond not found!", err));
-//             } else {
-//                 Esp32.find({pondId: id, createdAt: {$gte: startTime, $lte: endTime}})
-//                     .then(data => {
-//                         res.status(200).json(CreateSuccess(200, "Pond TDS retrieved successfully!", data));
-//                     })
-//                     .catch(err => {
-//                         console.log("error adding reading: ",err );
-//                         res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//                     });
-//             }
-//         })
-//         .catch(err => {
-//             console.log("error adding reading: ",err );
-//             res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//         });
-
-// }
-
-// //retrive pond temperature based on the timestamps provided (start date and end date, can be used accordingly)
-// export const getPondTemperatureTime = (req, res) => {
-//     const id = req.body.pondId;
-//     const startTime = new Date(parseInt(req.body.startTime) * 1000);
-//     const endTime = new Date(parseInt(req.body.endTime) * 1000);
-//     if (startTime >= endTime) {
-//         return res.status(601).json(CreateError(601, "Start date must be before end date!"));
-//     }
-
-//     Pond.findById(id)
-//         .then(pond => {
-//             if (!pond) {
-//                 res.status(404).json(CreateError(404, "Pond not found!", err));
-//             } else {
-//                 Esp32.find({pondId: id, createdAt: {$gte: startTime, $lte: endTime}})
-//                     .then(data => {
-//                         res.status(200).json(CreateSuccess(200, "Pond temperature retrieved successfully!", data));
-//                     })
-//                     .catch(err => {
-//                         console.log("error adding reading: ",err );
-//                         res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//                     });
-//             }
-//         })
-//         .catch(err => {
-//             console.log("error adding reading: ",err );
-//             res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//         });
-
-// }
-
-// //Retreive pond pH based on the timestamps provided (start date and end date, can be used accordingly)
-// export const getPondPhTime = (req, res) => {
-//     const id = req.body.pondId;
-//     const startTime = new Date(parseInt(req.body.startTime) * 1000);
-//     const endTime = new Date(parseInt(req.body.endTime) * 1000);
-//     if (startTime >= endTime) {
-//         return res.status(601).json(CreateError(601, "Start date must be before end date!"));
-//     }
-
-//     Pond.findById(id)
-//         .then(pond => {
-//             if (!pond) {
-//                 res.status(404).json(CreateError(404, "Pond not found!", err));
-//             } else {
-//                 Esp32.find({pondId: id, createdAt: {$gte: startTime, $lte: endTime}})
-//                     .then(data => {
-//                         res.status(200).json(CreateSuccess(200, "Pond pH retrieved successfully!", data));
-//                     })
-//                     .catch(err => {
-//                         console.log("error adding reading: ",err );
-//                         res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//                     });
-//             }
-//         })
-//         .catch(err => {
-//             console.log("error adding reading: ",err );
-//             res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//         });
-
-// }
-
-// //Retreive pond height based on the timestamps provided (start date and end date, can be used accordingly)
-// export const getPondHeightTime = (req, res) => {
-//     const id = req.body.pondId;
-//     console.log("req body: ", req.body);
-//     const startTime = new Date(parseInt(req.body.startTime) * 1000);
-//     const endTime = new Date(parseInt(req.body.endTime) * 1000);
-//     if (startTime >= endTime) {
-//         return res.status(601).json(CreateError(601, "Start date must be before end date!"));
-//     }
-
-//     console.log("Start TIme: ", startTime);
-//     console.log("End Time: ", endTime);
-
-//     Pond.findById(id)
-//         .then(pond => {
-//             if (!pond) {
-//                 res.status(404).json(CreateError(404, "Pond not found!", err));
-//             } else {
-//                 Esp32.find({pondId: id, createdAt: {$gte: startTime, $lte: endTime}})
-//                     .then(data => {
-//                         console.log ("data: ", data);
-//                         res.status(200).json(CreateSuccess(200, "Pond height retrieved successfully!", data));
-//                     })
-//                     .catch(err => {
-//                         console.log("error adding reading: ",err );
-//                         res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//                     });
-//             }
-//         })
-//         .catch(err => {
-//             console.log("error adding reading: ",err );
-//             res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//         });
-
-// }
-
-
-
-
-
-
-
-
-//Get only the latest esp32 temperature reading of a specific pond
-//V1 without WS
-// export const getLatestPondTemperature = (req, res) => {
-//     const id = req.body.pondId;
-
-//     Pond.findById(id)
-//         .then(pond => {
-//             if (!pond) {
-//                 return res.status(404).json(CreateError(404, "Pond not found!", null));
-//             } else {
-//                 Esp32.findOne({pondId: id}).sort({createdAt: -1})
-//                     .then(data => {
-//                         if (!data) {
-//                             return res.status(603).json(CreateError(603, "No temperature readings found for the pond.", null));
-//                         }
-//                         return res.status(200).json(CreateSuccess(200, "Pond temperature retrieved successfully!", data.temperatureReading));
-//                     })
-//                     .catch(err => {
-//                         console.log("error retrieving temperature reading: ", err);
-//                         return res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond temperature reading.", err));
-//                     });
-//             }
-//         })
-//         .catch(err => {
-//             console.log("error retrieving pond: ", err);
-//             return res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//         });
-// };
-
-//Get only the latest esp32 ph reading of a specific pond
-// export const getLatestPondPh = (req, res) => {
-//     const id = req.body.pondId;
-
-//     Pond.findById(id)
-//         .then(pond => {
-//             if (!pond) {
-//                 return res.status(404).json(CreateError(404, "Pond not found!", null));
-//             } else {
-//                 Esp32.findOne({pondId: id}).sort({createdAt: -1})
-//                     .then(data => {
-//                         if (!data) {
-//                             return res.status(603).json(CreateError(603, "No pH readings found for the pond.", null));
-//                         }
-//                         return res.status(200).json(CreateSuccess(200, "Pond pH retrieved successfully!", data.phReading));
-//                     })
-//                     .catch(err => {
-//                         console.log("error retrieving pH reading: ", err);
-//                         return res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond pH reading.", err));
-//                     });
-//             }
-//         })
-//         .catch(err => {
-//             console.log("error retrieving pond: ", err);
-//             return res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//         });
-// };
-
-
-// //Get only the latest esp32 height reading of a specific pond
-// export const getLatestPondHeight = (req, res) => {
-//     const id = req.body.pondId;
-
-//     Pond.findById(id)
-//         .then(pond => {
-//             if (!pond) {
-//                 return res.status(404).json(CreateError(404, "Pond not found!", null));
-//             } else {
-//                 Esp32.findOne({pondId: id}).sort({createdAt: -1})
-//                     .then(data => {
-//                         if (!data) {
-//                             return res.status(603).json(CreateError(603, "No height readings found for the pond.", null));
-//                         }
-//                         return res.status(200).json(CreateSuccess(200, "Pond height retrieved successfully!", data.heightReading));
-//                     })
-//                     .catch(err => {
-//                         console.log("error retrieving height reading: ", err);
-//                         return res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond height reading.", err));
-//                     });
-//             }
-//         })
-//         .catch(err => {
-//             console.log("error retrieving pond: ", err);
-//             return res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//         });
-// };
-
-
-// //Get only the latest esp32 tds reading of a specific pond
-// export const getLatestPondTds = (req, res) => {
-//     const id = req.body.pondId;
-
-//     Pond.findById(id)
-//         .then(pond => {
-//             if (!pond) {
-//                 return res.status(404).json(CreateError(404, "Pond not found!", null));
-//             } else {
-//                 Esp32.findOne({pondId: id}).sort({createdAt: -1})
-//                     .then(data => {
-//                         if (!data) {
-//                             return res.status(603).json(CreateError(603, "No TDS readings found for the pond.", null));
-//                         }
-//                         return res.status(200).json(CreateSuccess(200, "Pond TDS retrieved successfully!", data.tdsReading));
-//                     })
-//                     .catch(err => {
-//                         console.log("error retrieving TDS reading: ", err);
-//                         return res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond TDS reading.", err));
-//                     });
-//             }
-//         })
-//         .catch(err => {
-//             console.log("error retrieving pond: ", err);
-//             return res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
-//         });
-// };
-
-
-// Get only the latest esp32 temperature reading of a specific pond
-// controllers/pond.controller.js
