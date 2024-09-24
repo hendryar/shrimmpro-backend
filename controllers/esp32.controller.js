@@ -189,21 +189,60 @@ export const addReadingToDatabase = (req, res) => {
 //This is to prevent orphaned readings in the database.
 export const deleteReadingByPondId = (req, res) => {
     //This works by simply finding all ESP32 that has the pondId and deleting them.
-    const pondId = req.body.pondId;
-    Esp32.deleteMany({pondId: pondId})
+    const pondId = req.query.pondId;
+    if (!pondId) {
+        return res.status(400).json(CreateError(400, "Pond ID is required."));
+    }
+    const pond = Pond.findById(pondId);
+    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+    //also check if the decoded token is still valid.
+    const currentTime = new Date().getTime();
+    if (decoded.exp * 1000 < currentTime) {
+      return res.status(403).json(CreateError(403, "Token expired"));
+    }
+    if (decoded.roles !== 'admin') {
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    }
+    if (!pond) {
+      return res.status(404).json(CreateError(404, "Pond not found"));
+    }
+    if(Esp32.find({pondId: pondId}).length == 0){
+        return res.status(404).json(CreateError(404, "No readings found with the pondId provided."));
+    }
+    try {
+        Esp32.deleteMany({pondId: pondId})
         .then(data => {
             return res.status(200).json(CreateSuccess(200, "Readings deleted successfully!", data));
         })
         .catch(err => {
             return res.status(500).json(CreateError(500, "Some error occurred while deleting readings.", err));
         });
+    } catch (error) {
+      return res.status(500).json(CreateError(500, "Error Deleting Pond",error)); 
+    }
+    
 }
 
 //Delete all reading that has the serialNumber and passKey in the req body.
 //Used to delete all readings from a specific ESP32.
 export const deleteReadingBySerialNumberPasskey = (req, res) => {
-    const serialNumber = req.body.serialNumber;
-    const passKey = req.body.passKey;
+    const serialNumber = req.query.serialNumber;
+    const passKey = req.query.passKey;
+    //Check if serialNumber and passKey are provided.
+    if (!serialNumber || !passKey) {
+        return res.status(400).json(CreateError(400, "Serial number and passkey are required."));
+    }
+    //Check if user deleting is an admin.
+    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+    //also check if the decoded token is still valid.
+    const currentTime = new Date().getTime();
+    if (decoded.exp * 1000 < currentTime) {
+      return res.status(403).json(CreateError(403, "Token expired"));
+    }
+    if (decoded.roles !== 'admin') {
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    }
+    
    //Finds if there is any ESP32 reading with the serialNumber and passKey
     Esp32.find({serialNumber: serialNumber, passKey: passKey})
         .then(data => {

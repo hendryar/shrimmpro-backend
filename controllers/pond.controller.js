@@ -6,7 +6,8 @@ import dotenv from "dotenv";
 import Period from "../models/Period.js";
 import { minmaxvalidator } from "../utils/paramsminmax.js";
 import { removePeriod } from "./period.controller.js";
-// import { io } from "../index.js";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
 //Verified Working
 //Add pond to the database.
@@ -207,8 +208,20 @@ export const update = (req, res) => {
 //Validated Working
 // Delete a Pond with the specified id in the request
 export const deleteOne = (req, res) => {
-    const id = req.body.pondId;
-
+    if(!req.query.pondId) {
+        return res.status(400).json(CreateError(400, "Id can not be empty!"));
+    }
+    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+    //also check if the decoded token is still valid.
+    const currentTime = new Date().getTime();
+    if (decoded.exp * 1000 < currentTime) {
+      return res.status(403).json(CreateError(403, "Token expired"));
+    }
+    if (decoded.roles !== 'admin') {
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    }
+    try { 
+    const id = req.query.pondId;
     //Finds the pond with the specified id, then find the appropriate Esp32 and Period data associated with the Pond
     Pond.findById(id)
         .then(pond => {
@@ -261,6 +274,9 @@ export const deleteOne = (req, res) => {
         .catch(err => {
             return res.status(500).json(CreateError(500, "Some error occurred while retrieving the Pond.", err));
         });
+    } catch (error) {
+      return res.status(500).json(CreateError(500, "Error Deleting Pond",error)); 
+    }
 }
 
 //Valdiated working

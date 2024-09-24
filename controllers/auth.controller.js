@@ -342,10 +342,11 @@ export const logout = async (req, res, next) => {
 
 export const deleteUser = async (req, res, next) => {
   try {
-    const user = await User.findByIdAndDelete(req.body.userId);
+    const userId = req.query.userId;
+    const user = await User.findById(userId);
     //check from the token received that the user is an admin
     //if not, return an error
-    const decoded = jwt.verify(req.body.session_token, process.env.TOKEN_SECRET);
+    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
     //also check if the decoded token is still valid.
     const currentTime = new Date().getTime();
     if (decoded.exp * 1000 < currentTime) {
@@ -357,9 +358,14 @@ export const deleteUser = async (req, res, next) => {
     if (!user) {
       return res.status(404).json(CreateError(404, "User not found"));
     }
-    return res.status(200).json(CreateSuccess(200, "User deleted successfully", user));
+    try {
+      await User.findByIdAndDelete(userId);
+      return res.status(200).json(CreateSuccess(200, "User deleted successfully", user));
+    } catch (error) {
+      return res.status(500).json(CreateError(500, "Error Deleting User",error)); 
+    }
   } catch (error) {
-    return next(CreateError(500, error));
+    return res.status(500).json(CreateError(500, "Error Deleting User",error)); 
   }
 }
 
