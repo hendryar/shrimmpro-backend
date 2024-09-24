@@ -346,7 +346,7 @@ export const deleteUser = async (req, res, next) => {
     const user = await User.findById(userId);
     //check from the token received that the user is an admin
     //if not, return an error
-    const decoded = jwt.verify(req.body.session_token, process.env.TOKEN_SECRET);
+    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
     //also check if the decoded token is still valid.
     const currentTime = new Date().getTime();
     if (decoded.exp * 1000 < currentTime) {

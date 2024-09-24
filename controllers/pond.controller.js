@@ -204,7 +204,7 @@ export const deleteOne = (req, res) => {
     if(!req.query.pondId) {
         return res.status(400).json(CreateError(400, "Id can not be empty!"));
     }
-    const decoded = jwt.verify(req.body.session_token, process.env.TOKEN_SECRET);
+    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
     //also check if the decoded token is still valid.
     const currentTime = new Date().getTime();
     if (decoded.exp * 1000 < currentTime) {
