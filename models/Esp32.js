@@ -26,7 +26,7 @@ const Esp32Schema = mongoose.Schema({
     },
     tdsReading: {
         type: Number,
-        max: 1000
+        max: 2000
     },
     pondId: {
         type: mongoose.Schema.Types.ObjectId,
