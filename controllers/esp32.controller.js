@@ -113,7 +113,7 @@ export const deleteReadingByPondId = (req, res) => {
         return res.status(400).json(CreateError(400, "Pond ID is required."));
     }
     const pond = Pond.findById(pondId);
-    const decoded = jwt.verify(req.body.session_token, process.env.TOKEN_SECRET);
+    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
     //also check if the decoded token is still valid.
     const currentTime = new Date().getTime();
     if (decoded.exp * 1000 < currentTime) {
@@ -152,7 +152,7 @@ export const deleteReadingBySerialNumberPasskey = (req, res) => {
         return res.status(400).json(CreateError(400, "Serial number and passkey are required."));
     }
     //Check if user deleting is an admin.
-    const decoded = jwt.verify(req.body.session_token, process.env.TOKEN_SECRET);
+    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
     //also check if the decoded token is still valid.
     const currentTime = new Date().getTime();
     if (decoded.exp * 1000 < currentTime) {
