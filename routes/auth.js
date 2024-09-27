@@ -11,7 +11,7 @@ const jsonParser = bodyParser.json();
 router.post('/check', jsonParser, checkEmail);
 router.post('/register', register);
 router.post('/login', login);
-router.post('/update', update);
+router.put('/update', update);
 router.delete('/delete', deleteUser);
 router.post('/logout', logout);
 router.post('/all', getAllUsers);

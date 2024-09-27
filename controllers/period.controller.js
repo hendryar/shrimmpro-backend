@@ -2,6 +2,7 @@ import Period from "../models/Period.js";
 import Pond from "../models/Pond.js";
 import { CreateSuccess } from "../utils/success.js";
 import { CreateError } from "../utils/error.js";
+import jwt from "jsonwebtoken";
 
 
 //Validated Working
@@ -122,6 +123,20 @@ export const findAll = (req, res) => {
 //The start date must be before the end date.
 //The period name, start date, and end date must be unique.
 export const addPeriod = async (req, res) => {
+    if(!req.headers['session_token']){
+        return res.status(403).json(CreateError(403, "Forbidden"));
+      };
+    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+    //also check if the decoded token is still valid.
+    const currentTime = new Date().getTime();
+    if (decoded.exp * 1000 < currentTime) {
+      return res.status(403).json(CreateError(403, "Token expired"));
+    }
+    if (decoded.roles !== 'admin') {
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    }
+
+
     //Request body validation, ensure everything is there.
     if (!req.body.periodName || !req.body.periodStart || !req.body.periodEnd || !req.body.pondId) {
         return res.status(400).json(CreateError(400, "Period name, start date, end date and pond ID are required!"));

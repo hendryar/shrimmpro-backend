@@ -208,9 +208,13 @@ export const update = (req, res) => {
 //Validated Working
 // Delete a Pond with the specified id in the request
 export const deleteOne = (req, res) => {
+    //validation to check that id and session token is not empty
     if(!req.query.pondId) {
         return res.status(400).json(CreateError(400, "Id can not be empty!"));
     }
+    if(!req.headers['session_token']){
+        return res.status(403).json(CreateError(403, "Forbidden"));
+      };
     const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
     //also check if the decoded token is still valid.
     const currentTime = new Date().getTime();
