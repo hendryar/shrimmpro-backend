@@ -11,7 +11,7 @@ router.post("/", jsonParser, addPeriod);
 router.get("/allpond", findAllForPond);
 router.get("/", findOnePeriod);
 router.get("/all", findAll);
-router.patch("/", jsonParser, updatePeriod);
+router.put("/", jsonParser, updatePeriod);
 router.post("/delete", jsonParser, removePeriod);
 
 export default router;

@@ -210,12 +210,13 @@ export const update = async (req, res, next) => {
     }
     // Retrieve all field values without having to manually retrieve them
     const getFieldValue = (fieldValue) => Array.isArray(fieldValue) ? fieldValue[0] : fieldValue;
-
-    const token = getFieldValue(fields.session_token);
+    const token = req.headers['session_token'];
     const userId = getFieldValue(fields.userId);
-
     // Decode the token
     let decoded;
+    if(!req.headers['session_token']){
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    };
     try {
       decoded = jwt.verify(token, process.env.TOKEN_SECRET);
     } catch (error) {
@@ -344,6 +345,9 @@ export const deleteUser = async (req, res, next) => {
   try {
     const userId = req.query.userId;
     const user = await User.findById(userId);
+    if(!req.headers['session_token']){
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    };
     //check from the token received that the user is an admin
     //if not, return an error
     const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
@@ -372,9 +376,13 @@ export const deleteUser = async (req, res, next) => {
 //Retreives all USER ID along with their email, email, and picture.
 export const getAllUsers = async (req, res, next) => {
   try {
+    //check if session token is present.
+    if(!req.headers['session_token']){
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    };
     //check from the token received that the user is an admin
     //if not, return an error
-    const decoded = jwt.verify(req.body.session_token, process.env.TOKEN_SECRET);
+    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
     //also check if the decoded token is still valid.
     const currentTime = new Date().getTime();
     if (decoded.exp * 1000 < currentTime) {

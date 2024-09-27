@@ -193,6 +193,9 @@ export const deleteReadingByPondId = (req, res) => {
     if (!pondId) {
         return res.status(400).json(CreateError(400, "Pond ID is required."));
     }
+    if(!req.headers['session_token']){
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    };
     const pond = Pond.findById(pondId);
     const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
     //also check if the decoded token is still valid.
@@ -232,6 +235,9 @@ export const deleteReadingBySerialNumberPasskey = (req, res) => {
     if (!serialNumber || !passKey) {
         return res.status(400).json(CreateError(400, "Serial number and passkey are required."));
     }
+    if(!req.headers['session_token']){
+      return res.status(403).json(CreateError(403, "Forbidden"));
+    };
     //Check if user deleting is an admin.
     const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
     //also check if the decoded token is still valid.
