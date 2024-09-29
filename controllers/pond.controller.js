@@ -11,71 +11,104 @@ import User from "../models/User.js";
 
 //Verified Working
 //Add pond to the database.
-export const create = (req, res) => {
-    console.log("req.body: ", req.body);
-    //Request validation, ensure its not empty.
-    if (!req.body.name) {
-        res.status(400).json(CreateError(400, "Name can not be empty!"));
-        return null;
-    }
 
-    //validate if an esp32 is already connected to the pond
-    Pond.find({connectedEsp32Serial: esp32Serial, connectedEsp32Passkey: esp32Passkey})
-        .then(data => {
-            if (data.length > 0) {
-                return res.status(400).json(CreateError(400, "ESP32 already connected to another Pond!"));
-            }
-        })
-    //validate if req.body.name is already in the database
-    Pond.find({name: req.body.name})
-        .then(data => {
-            console.log("entering finding pond");
-            console.log("name: ", req.body.name);   
-            if (data.length > 0) {
-                console.log("Name already exists!");
-                return res.status(400).json(CreateError(400, "Name already exists!"));
-            }
-            else {
-                const minmax = minmaxvalidator(req, res);
-                if (minmax) {
-                    return minmax;
-                }
-                const pond = new Pond({
-                    name: req.body.name,
-                    area: req.body.area,
-                    shrimpbreed: req.body.shrimpbreed,
-                    tonnage: req.body.tonnage,
-                    connectedEsp32Serial: req.body.connectedEsp32Serial || null,
-                    connectedEsp32Passkey: req.body.connectedEsp32Passkey || null,
-                    safeMinPh: req.body.safeMinPh || 6.5,
-                    safeMaxPh: req.body.safeMaxPh || 8.5,
-                    safeMinTemperature: req.body.safeMinTemperature || 25,
-                    safeMaxTemperature: req.body.safeMaxTemperature || 40,
-                    safeMinHeight: req.body.safeMinHeight || 40,
-                    safeMaxHeight: req.body.safeMaxHeight || 200,
-                    safeMinTds: req.body.safeMinTds || 200,
-                    safeMaxTds: req.body.safeMaxTds || 1000,
-                    userId: req.body.userId
-                });
-                console.log("pond data: ",pond);
-                console.log("saving pond");
-            
-                //Saves the pond entity to the database.
-                pond
-                    .save(pond)
-                    .then(data => {
-                        return res.status(201).json(CreateSuccess(201, "Pond created successfully!", data));
-                    })
-                    .catch(err => {
-                        return res.status(500).json(CreateError(500,"Some error occurred while creating the Pond.", err));
-                    });
-            }
-        })
-        .catch(err => {
-            return res.status(500).json(CreateError(500, "Some error occurred while checking if the name already exists.", err));
+export const create = async (req, res) => {
+    try {
+      console.log("req.body: ", req.body);
+  
+      // Request validation, ensure its not empty
+      if (req.body.connectedEsp32Serial && !req.body.connectedEsp32Passkey) {
+        return res.status(400).json(CreateError(400, "Passkey is required!"));
+      }
+      if (!req.body.connectedEsp32Serial && req.body.connectedEsp32Passkey) {
+        return res.status(400).json(CreateError(400, "Serial Number is required!"));
+      }
+  
+      const token = req.headers['session_token'];
+  
+      if (!token) {
+        return res.status(403).json(CreateError(403, "Forbidden"));
+      }
+  
+      let decoded;
+      try {
+        decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+      } catch (error) {
+        console.error("Error verifying token:", error);
+        return res.status(403).json(CreateError(403, "Invalid token"));
+      }
+  
+      // Check if the user has admin role
+      if (decoded.roles !== 'admin') {
+        return res.status(403).json(CreateError(403, "Forbidden"));
+      }
+  
+      // Check if the token is still valid
+      const currentTime = new Date().getTime();
+      if (decoded.exp * 1000 < currentTime) {
+        return res.status(403).json(CreateError(403, "Token expired"));
+      }
+  
+      if (!req.body.name) {
+        return res.status(400).json(CreateError(400, "Name cannot be empty!"));
+      }
+  
+      // Validate if an esp32 is already connected to the pond
+      if (req.body.connectedEsp32Serial && req.body.connectedEsp32Passkey) {
+        const existingEsp32 = await Pond.findOne({
+          connectedEsp32Serial: req.body.connectedEsp32Serial,
+          connectedEsp32Passkey: req.body.connectedEsp32Passkey,
         });
+  
+        if (existingEsp32) {
+          console.log("ESP32 already connected to another Pond!");
+          return res.status(400).json(CreateError(400, "ESP32 already connected to another Pond!"));
+        }
+      }
+  
+      // Validate if req.body.name is already in the database
+      const existingPond = await Pond.findOne({ name: req.body.name });
+      if (existingPond) {
+        console.log("Name already exists!");
+        return res.status(400).json(CreateError(400, "Name already exists!"));
+      }
+  
+      // Continue with validation
+      const minmax = minmaxvalidator(req, res);
+      if (minmax) {
+        return minmax;
+      }
+  
+      const pond = new Pond({
+        name: req.body.name,
+        area: req.body.area,
+        shrimpbreed: req.body.shrimpbreed,
+        tonnage: req.body.tonnage,
+        connectedEsp32Serial: req.body.connectedEsp32Serial || null,
+        connectedEsp32Passkey: req.body.connectedEsp32Passkey || null,
+        safeMinPh: req.body.safeMinPh || 6.5,
+        safeMaxPh: req.body.safeMaxPh || 8.5,
+        safeMinTemperature: req.body.safeMinTemperature || 25,
+        safeMaxTemperature: req.body.safeMaxTemperature || 40,
+        safeMinHeight: req.body.safeMinHeight || 40,
+        safeMaxHeight: req.body.safeMaxHeight || 200,
+        safeMinTds: req.body.safeMinTds || 200,
+        safeMaxTds: req.body.safeMaxTds || 1000,
+        userId: req.body.userId,
+      });
+  
+      console.log("Saving pond:", pond);
+  
+      // Save the pond entity to the database
+      const savedPond = await pond.save();
+      return res.status(201).json(CreateSuccess(201, "Pond created successfully!", savedPond));
+  
+    } catch (err) {
+      console.error("Error occurred:", err);
+      return res.status(500).json(CreateError(500, "Some error occurred while creating the Pond.", err));
     }
-
+  };
+  
 
 //Working
 //Set the minimum 
