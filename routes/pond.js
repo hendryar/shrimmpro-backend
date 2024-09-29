@@ -15,7 +15,7 @@ router.post('/minmax', jsonParser, setPondMinMax);
 router.get('/', getPondById);
 router.get('/name', findPond);
 router.get('/all', findAll);
-router.post('/update', update)
+router.put('/update', update)
 router.post('/addesp', jsonParser, addEspToPond);
 router.get('/r', getPondReading);
 router.get('/hl', getPondHighLow);

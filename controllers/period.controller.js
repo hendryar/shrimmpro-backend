@@ -18,105 +18,6 @@ export const findAll = (req, res) => {
 };
 
 
-//Validated Working with validation
-//add a specific period for a pond based on the req body
-
-//V1 with unix milliseconds
-// export const addPeriod = async (req, res) => {
-//     console.log("masuk add");
-
-//     // Validate request
-//     if (!req.body.periodName || !req.body.periodStart || !req.body.periodEnd || !req.body.pondId) {
-//         return res.status(400).json(CreateError(400, "Period name, start date, end date and pond ID are required!"));
-//     }
-
-//     const startTime = req.body.periodStart;
-//     const endTime = req.body.periodEnd;
-//     if (startTime >= endTime) {
-//         console.log("masuk date time validation");
-//         return res.status(600).json(CreateError(601, "Start date must be before end date!"));
-//     }
-
-//     try {
-//         // Check if pond exists
-//         const pond = await Pond.findById(req.body.pondId);
-//         if (!pond) {
-//             return res.status(404).json(CreateError(404, `Pond with id ${req.body.pondId} not found!`));
-//         }
-
-//         // Check if a period with the same name already exists
-//         const existingPeriodByName = await Period.findOne({ periodName: req.body.periodName });
-//         if (existingPeriodByName) {
-//             return res.status(400).json(CreateError(400, `Period with name ${req.body.periodName} already exists!`));
-//         }
-
-//         // Check if a period with the same start date and end date already exists
-//         const existingPeriodByDate = await Period.findOne({ periodStart: req.body.periodStart, periodEnd: req.body.periodEnd });
-//         if (existingPeriodByDate) {
-//             return res.status(400).json(CreateError(400, `Period with start date ${req.body.periodStart} and end date ${req.body.periodEnd} already exists!`));
-//         }
-
-//         // Create a period
-//         const period = new Period({
-//             periodName: req.body.periodName,
-//             periodStart: startTime,
-//             periodEnd: endTime,
-//             pondId: req.body.pondId
-//         });
-
-//         // Save period in the database
-//         const savedPeriod = await period.save();
-//         return res.status(201).json(CreateSuccess(201, "Period created successfully!", savedPeriod));
-
-//     } catch (err) {
-//         return res.status(500).json(CreateError(500, "Some error occurred while processing the request.", err));
-//     }
-// };
-
-//V2 with unix timestamps
-// export const addPeriod = async (req, res) => {
-//     //Request body validation, ensure everything is there.
-//     if (!req.body.periodName || !req.body.periodStart || !req.body.periodEnd || !req.body.pondId) {
-//         return res.status(400).json(CreateError(400, "Period name, start date, end date and pond ID are required!"));
-//     }
-//     //Converts period start and end date from Unix timestamps to Date objects.
-//     const startTime = new Date(parseInt(req.body.periodStart) * 1000);
-//     const endTime = new Date(parseInt(req.body.periodEnd) * 1000);
-//     //Ensure that the start date is before the end date.
-//     if (startTime >= endTime) {
-//         return res.status(601).json(CreateError(601, "Start date must be before end date!"));
-//     }
-//     try {
-//         //Check if pond exists
-//         const pond = await Pond.findById(req.body.pondId);
-//         if (!pond) {
-//             return res.status(404).json(CreateError(404, `Pond with id ${req.body.pondId} not found!`));
-//         }
-//         //Check for existing period with the same name
-//         const existingPeriodByName = await Period.findOne({ periodName: req.body.periodName });
-//         if (existingPeriodByName) {
-//             return res.status(602).json(CreateError(602, `Period with name ${req.body.periodName} already exists!`));
-//         }
-//         //Check if a period with the same start date and end date already exists
-//         const existingPeriodByDate = await Period.findOne({ periodStart: startTime, periodEnd: endTime });
-//         if (existingPeriodByDate) {
-//             return res.status(603).json(CreateError(603, `Period with start date ${req.body.periodStart} and end date ${req.body.periodEnd} already exists!`));
-//         }
-//         //Create a period using the request body and the converted start and end date.
-//         const period = new Period({
-//             periodName: req.body.periodName,
-//             periodStart: startTime,
-//             periodEnd: endTime,
-//             pondId: req.body.pondId
-//         });
-//         //Save period into the db.
-//         const savedPeriod = await period.save();
-//         return res.status(201).json(CreateSuccess(201, "Period created successfully!", savedPeriod));
-//     } catch (err) {
-//         return res.status(500).json(CreateError(500, "Some error occurred while processing the request.", err));
-//     }
-// };
-
 //V3 with added validation
 //Adds a period to the database.
 //The period's start and end date are in Unix timestamps.
@@ -220,6 +121,7 @@ export const findOnePeriod = (req, res) => {
 export const updatePeriod = async (req, res) => {
     console.log("masuk update");
 
+    //TODO: tambah validasi admin
     // Validate request
     if (!req.body.periodName || !req.body.periodStart || !req.body.periodEnd || !req.body.pondId) {
         return res.status(400).json(CreateError(400, "Period name, start date, end date and pond ID are required!"));
