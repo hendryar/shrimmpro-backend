@@ -181,7 +181,7 @@ export const findPond = (req, res) => {
 //Validated Working
 //Finds a single pond by ID
 export const getPondById = (req, res) => {
-    const id = req.body.pondId;
+    const id = req.params.pondId;
     console.log("masuk id: ", id);
     Pond.findById(id).then(data => {
         console.log("data: ", data);

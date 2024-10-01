@@ -12,7 +12,7 @@ const jsonParser = bodyParser.json();
 //The pond routes themselves.
 router.post('/create', jsonParser, create);
 router.post('/minmax', jsonParser, setPondMinMax);
-router.get('/', getPondById);
+router.get('/:pondId', getPondById);
 router.get('/name', findPond);
 router.get('/all', findAll);
 router.put('/update', update)
