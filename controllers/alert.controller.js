@@ -16,192 +16,6 @@ import { CreateSuccess } from "../utils/success.js";
 //jangan lupa pond id disimpen biar bisa di sort ambil per pond.
 
 
-// export const createAlert = async (pondId, info) => {
-//     try {
-//         // Find the pond by ID and retrieve the safe limits
-//         const pond = await Pond.findById(pondId);
-//         if (!pond) {
-//             return res.status(404).json({ message: "Pond Not Found" });
-//         }
-
-//         // Check for alerts within the last 15 minutes for this pond
-//         const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-//         const recentAlerts = await Alert.find({
-//             pondId: pondId,
-//             alertTime: { $gte: fifteenMinutesAgo }
-//         });
-
-//         // Helper function to determine if a new alert is needed
-//         const shouldCreateNewAlert = (type, currentValue, safeMin, safeMax, lastStatus) => {
-//             const belowSafeLimit = currentValue < safeMin;
-//             const aboveSafeLimit = currentValue > safeMax;
-//             const warningLimit = 0.15; // 15% limit
-//             const highWarningLimit = 0.1; // 10% limit
-//             const criticalLimit = 0.05; // 5% limit
-
-//             if (belowSafeLimit || aboveSafeLimit) {
-//                 // Check critical state
-//                 if (Math.abs(currentValue - (belowSafeLimit ? safeMin : safeMax)) >= criticalLimit) {
-//                     return { status: 'critical', message: `${type} is out of normal range` };
-//                 }
-
-//                 // Check warning state
-//                 if (Math.abs(currentValue - (belowSafeLimit ? safeMin : safeMax)) >= highWarningLimit) {
-//                     return { status: 'warning', message: `${type} is approaching safe limits` };
-//                 }
-
-//                 // Check if the warning has already been raised
-//                 if (Math.abs(currentValue - (belowSafeLimit ? safeMin : safeMax)) >= warningLimit) {
-//                     if (lastStatus !== 'warning' || new Date(lastStatus.alertTime) < fifteenMinutesAgo) {
-//                         return { status: 'warning', message: `${type} is approaching 15% limit` };
-//                     }
-//                 }
-//             }
-
-//             return null;
-//         };
-
-//         const alertTypes = [];
-//         let alertStatus = 'normal';
-//         let alertMessage = '';
-
-//         // Process each parameter to determine if an alert should be raised
-//         const paramsToCheck = [
-//             { type: 'ph', currentValue: info.ph, safeMin: pond.safeMinPh, safeMax: pond.safeMaxPh },
-//             { type: 'temperature', currentValue: info.temperature, safeMin: pond.safeMinTemperature, safeMax: pond.safeMaxTemperature },
-//             { type: 'height', currentValue: info.height, safeMin: pond.safeMinHeight, safeMax: pond.safeMaxHeight },
-//             { type: 'tds', currentValue: info.tds, safeMin: pond.safeMinTds, safeMax: pond.safeMaxTds },
-//         ];
-
-//         for (let param of paramsToCheck) {
-//             const existingAlert = recentAlerts.find(alert => alert.alertType === param.type);
-//             const lastStatus = existingAlert ? existingAlert.alertStatus : null;
-
-//             const result = shouldCreateNewAlert(param.type, param.currentValue, param.safeMin, param.safeMax, lastStatus);
-//             if (result) {
-//                 alertTypes.push(param.type);
-//                 alertMessage += `${param.type} ${result.message}. `;
-//                 alertStatus = result.status;
-//             }
-//         }
-
-//         // If no alerts are needed, exit the function
-//         if (!alertTypes.length) {
-//             return res.status(200).json({ message: "No alerts generated" });
-//         }
-
-//         // Create a new alert entry
-//         const newAlert = new Alert({
-//             alertType: alertTypes.join(', '),
-//             alertMessage: alertMessage.trim(),
-//             alertStatus: alertStatus,
-//             alertTime: new Date(),
-//             pondId: pondId
-//         });
-
-//         await newAlert.save();
-//         res.status(201).json(newAlert);
-//     } catch (error) {
-//         res.status(500).json({ message: "Unable to create alert", error });
-//     }
-// };
-
-
-//v2
-// export const createAlert = async (pondId, info, socket) => {
-//     console.log("createalert kepanggil");
-//     try {
-//         const pond = await Pond.findById(pondId);
-//         if (!pond) {
-//             throw new Error("Pond Not Found");
-//         }
-
-//         const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-//         const recentAlerts = await Alert.find({
-//             pondId: pondId,
-//             alertTime: { $gte: fifteenMinutesAgo }
-//         });
-
-//         const shouldCreateNewAlert = (type, currentValue, safeMin, safeMax, lastStatus) => {
-//             const belowSafeLimit = currentValue < safeMin;
-//             const aboveSafeLimit = currentValue > safeMax;
-//             const warningLimit = 0.15;
-//             const highWarningLimit = 0.1;
-//             const criticalLimit = 0.05;
-
-//             if (belowSafeLimit || aboveSafeLimit) {
-//                 if (Math.abs(currentValue - (belowSafeLimit ? safeMin : safeMax)) >= criticalLimit) {
-//                     return { status: 'critical', message: `${type} is out of normal range` };
-//                 }
-//                 if (Math.abs(currentValue - (belowSafeLimit ? safeMin : safeMax)) >= highWarningLimit) {
-//                     return { status: 'warning', message: `${type} is approaching safe limits` };
-//                 }
-//                 if (Math.abs(currentValue - (belowSafeLimit ? safeMin : safeMax)) >= warningLimit) {
-//                     if (lastStatus !== 'warning' || new Date(lastStatus.alertTime) < fifteenMinutesAgo) {
-//                         return { status: 'warning', message: `${type} is approaching 15% limit` };
-//                     }
-//                 }
-//             }
-
-//             return null;
-//         };
-
-//         const alertTypes = [];
-//         let alertStatus = 'normal';
-//         let alertMessage = '';
-
-//         const paramsToCheck = [
-//             { type: 'ph', currentValue: info.ph, safeMin: pond.safeMinPh, safeMax: pond.safeMaxPh },
-//             { type: 'temperature', currentValue: info.temperature, safeMin: pond.safeMinTemperature, safeMax: pond.safeMaxTemperature },
-//             { type: 'height', currentValue: info.height, safeMin: pond.safeMinHeight, safeMax: pond.safeMaxHeight },
-//             { type: 'tds', currentValue: info.tds, safeMin: pond.safeMinTds, safeMax: pond.safeMaxTds },
-//         ];
-
-//         for (let param of paramsToCheck) {
-//             const existingAlert = recentAlerts.find(alert => alert.alertType === param.type);
-//             const lastStatus = existingAlert ? existingAlert.alertStatus : null;
-
-//             const result = shouldCreateNewAlert(param.type, param.currentValue, param.safeMin, param.safeMax, lastStatus);
-//             if (result) {
-//                 alertTypes.push(param.type);
-//                 alertMessage += `${param.type} ${result.message}. `;
-//                 alertStatus = result.status;
-//             }
-//         }
-
-//         if (!alertTypes.length) {
-//             return null;
-//         }
-
-//         const newAlert = new Alert({
-//             alertType: alertTypes.join(', '),
-//             alertMessage: alertMessage.trim(),
-//             alertStatus: alertStatus,
-//             alertTime: new Date(),
-//             pondId: pondId
-//         });
-
-//         await newAlert.save();
-
-//         // Emit the alert via WebSocket if a socket instance is provided
-//         if (socket) {
-//             socket.to(pondId).emit('alert', {
-//                 alertType: newAlert.alertType,
-//                 alertStatus: newAlert.alertStatus,
-//                 alertMessage: newAlert.alertMessage,
-//                 pondId: newAlert.pondId,
-//                 timestamp: newAlert.alertTime
-//             });
-//         }
-
-//         return newAlert;
-//     } catch (error) {
-//         console.error("Error in createAlert:", error);
-//         throw error;
-//     }
-// };
-
-
 export const createAlert = async (pondId, info, socket) => {
     console.log("createalert kepanggil");
     try {
@@ -246,7 +60,6 @@ export const createAlert = async (pondId, info, socket) => {
 
         const alertTypes = [];
         let alertStatus = 'normal';
-        let alertMessage = '';
 
         const paramsToCheck = [
             { type: 'ph', currentValue: info.ph, safeMin: pond.safeMinPh, safeMax: pond.safeMaxPh },
@@ -255,6 +68,8 @@ export const createAlert = async (pondId, info, socket) => {
             { type: 'tds', currentValue: info.tds, safeMin: pond.safeMinTds, safeMax: pond.safeMaxTds },
         ];
 
+        let alertMessage = ''; // Initialize the alertMessage variable
+
         for (let param of paramsToCheck) {
             const existingAlert = recentAlerts.find(alert => alert.alertType === param.type);
             const lastStatus = existingAlert ? existingAlert.alertStatus : null;
@@ -262,9 +77,15 @@ export const createAlert = async (pondId, info, socket) => {
             const result = shouldCreateNewAlert(param.type, param.currentValue, param.safeMin, param.safeMax, lastStatus);
             if (result) {
                 alertTypes.push(param.type);
-                alertMessage += `${result.message}. `;
+                // Add to the message and remove the period at the end for commas
+                alertMessage += `${result.message}, `; 
                 alertStatus = result.status;
             }
+        }
+
+        // Capitalize the first letter of the alertMessage and remove trailing comma and space
+        if (alertMessage.length > 0) {
+            alertMessage = alertMessage.charAt(0).toUpperCase() + alertMessage.slice(1).trim().replace(/,\s*$/, '');
         }
 
         if (!alertTypes.length) {
@@ -273,13 +94,17 @@ export const createAlert = async (pondId, info, socket) => {
 
         const newAlert = new Alert({
             alertType: alertTypes.join(', '),
-            alertMessage: alertMessage.trim(),
+            alertMessage: alertMessage, // Now formatted correctly
             alertStatus: alertStatus,
             alertTime: new Date(),
             pondId: pondId
         });
+        console.log("New alert created: ", newAlert);
+        console.log("Saving new alert");
 
         await newAlert.save();
+
+                
 
         // Emit the alert via WebSocket if a socket instance is provided
         if (socket) {
@@ -291,6 +116,18 @@ export const createAlert = async (pondId, info, socket) => {
                 timestamp: newAlert.alertTime
             });
         }
+        // if (socket) {
+        //     // Ensure alertType is a comma-separated string
+        
+        //     socket.to(pondId).emit('alert', {
+        //         alertType: alertTypeString, // Send the string here
+        //         alertStatus: newAlert.alertStatus,
+        //         alertMessage: newAlert.alertMessage,
+        //         pondId: newAlert.pondId,
+        //         timestamp: newAlert.alertTime
+        //     });
+        // }
+        
 
         // Exclude __v and updatedAt from the response
         const { __v, updatedAt, ...alertWithoutVAndUpdated } = newAlert.toObject();
