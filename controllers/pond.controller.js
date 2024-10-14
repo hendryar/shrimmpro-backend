@@ -341,7 +341,7 @@ export const addEspToPond = (req, res) => {
     }, {useFindAndModify: false})
         .then(data => {
             if (!data) {
-                return res.status(404).json(CreateError(404, `Cannot add ESP32 to Pond with id=${id}. Maybe Pond was not found!`, err));
+                return res.status(404).json(CreateError(404, `Cannot add ESP32 to Pond with id=${id}. Maybe Pond was not found!`));
             } else
             return res.status(200).json(CreateSuccess(200, "ESP32 added to Pond successfully!", data));
         })

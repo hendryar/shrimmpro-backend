@@ -16,10 +16,6 @@ const AlertSchema = mongoose.Schema({
         required: true,
         max: 20
     },
-    alertTime: {
-        type: Date,
-        required: true
-    },
     pondId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Pond"
