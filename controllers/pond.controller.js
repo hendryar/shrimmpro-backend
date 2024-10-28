@@ -24,33 +24,17 @@ export const create = async (req, res) => {
         return res.status(400).json(CreateError(400, "Serial Number is required!"));
       }
   
-      const token = req.headers['session_token'];
-  
-      if (!token) {
-        return res.status(403).json(CreateError(403, "Forbidden"));
-      }
-  
-      let decoded;
       try {
-        decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+        if(!req.headers['session_token']){
+            return res.status(403).json(CreateError(403, "Forbidden"));
+          };
+        const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+        //also check if the decoded token is still valid.
+        if (decoded.roles !== 'admin') {
+          return res.status(403).json(CreateError(403, "Forbidden"));
+        }
       } catch (error) {
-        console.error("Error verifying token:", error);
-        return res.status(403).json(CreateError(403, "Invalid token"));
-      }
-  
-      // Check if the user has admin role
-      if (decoded.roles !== 'admin') {
-        return res.status(403).json(CreateError(403, "Forbidden"));
-      }
-  
-      // Check if the token is still valid
-      const currentTime = new Date().getTime();
-      if (decoded.exp * 1000 < currentTime) {
-        return res.status(403).json(CreateError(403, "Token expired"));
-      }
-  
-      if (!req.body.name) {
-        return res.status(400).json(CreateError(400, "Name cannot be empty!"));
+           return res.status(403).json(CreateError(403, "Forbidden", error))
       }
   
       // Validate if an esp32 is already connected to the pond
@@ -113,6 +97,22 @@ export const create = async (req, res) => {
 //Working
 //Set the minimum 
 export const setPondMinMax = (req, res) => {
+    try {
+        if(!req.headers['session_token']){
+            return res.status(403).json(CreateError(403, "Forbidden"));
+          };
+        const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+        //also check if the decoded token is still valid.
+        if (decoded.roles !== 'admin') {
+          return res.status(403).json(CreateError(403, "Forbidden"));
+        }
+      } catch (error) {
+           return res.status(403).json(CreateError(403, "Forbidden", error))
+      }
+
+    if(!req.body.pondId || !req.body.safeMinPh || !req.body.safeMaxPh || !req.body.safeMinTemperature || !req.body.safeMaxTemperature || !req.body.safeMinHeight || !req.body.safeMaxPh || !req.body.safeMinTds || !req.body.safeMaxTds){
+        return res.status(400).json(CreateError(400, "Parameters should be filled"))
+    }
     //Read the values from the request body.
     const id = req.body.pondId;
     const safeMinPh = req.body.safeMinPh;
@@ -215,6 +215,18 @@ export const findAll = (req, res) => {
 
 //UNTESTED!!!!
 export const update = (req, res) => {
+    try {
+        if(!req.headers['session_token']){
+            return res.status(403).json(CreateError(403, "Forbidden"));
+          };
+        const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+        //also check if the decoded token is still valid.
+        if (decoded.roles !== 'admin') {
+          return res.status(403).json(CreateError(403, "Forbidden"));
+        }
+      } catch (error) {
+           return res.status(403).json(CreateError(403, "Forbidden", error))
+      }
     console.log("req.body: ", req.body);
     if (!req.body) {
         return res.status(400).json(CreateError(400, "Data to update can not be empty!"));
@@ -245,18 +257,18 @@ export const deleteOne = (req, res) => {
     if(!req.query.pondId) {
         return res.status(400).json(CreateError(400, "Id can not be empty!"));
     }
-    if(!req.headers['session_token']){
-        return res.status(403).json(CreateError(403, "Forbidden"));
-      };
-    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
-    //also check if the decoded token is still valid.
-    const currentTime = new Date().getTime();
-    if (decoded.exp * 1000 < currentTime) {
-      return res.status(403).json(CreateError(403, "Token expired"));
-    }
-    if (decoded.roles !== 'admin') {
-      return res.status(403).json(CreateError(403, "Forbidden"));
-    }
+    try {
+        if(!req.headers['session_token']){
+            return res.status(403).json(CreateError(403, "Forbidden"));
+          };
+        const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+        //also check if the decoded token is still valid.
+        if (decoded.roles !== 'admin') {
+          return res.status(403).json(CreateError(403, "Forbidden"));
+        }
+      } catch (error) {
+           return res.status(403).json(CreateError(403, "Forbidden", error))
+      }
     try { 
     const id = req.query.pondId;
     //Finds the pond with the specified id, then find the appropriate Esp32 and Period data associated with the Pond
