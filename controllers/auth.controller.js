@@ -216,6 +216,7 @@ export const update = async (req, res, next) => {
     try {
       if(!req.headers['session_token']){
           return res.status(403).json(CreateError(403, "Forbidden"));
+        };
       const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
       //also check if the decoded token is still valid.
       if (decoded.roles !== 'admin') {
