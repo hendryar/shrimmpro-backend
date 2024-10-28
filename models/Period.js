@@ -14,11 +14,16 @@ const PeriodSchema = mongoose.Schema({
     },
     periodEnd: {
         type: Date,
-        required: true,
+        required: false,
     },
     pondId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Pond"
+    },
+    isActive: {
+        type: Boolean,
+        required: true,
+        default: true,
     }
 
 }, {timestamps: true});

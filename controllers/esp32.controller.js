@@ -162,15 +162,18 @@ export const deleteReadingByPondId = (req, res) => {
       return res.status(403).json(CreateError(403, "Forbidden"));
     };
     const pond = Pond.findById(pondId);
-    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
-    //also check if the decoded token is still valid.
-    const currentTime = new Date().getTime();
-    if (decoded.exp * 1000 < currentTime) {
-      return res.status(403).json(CreateError(403, "Token expired"));
-    }
-    if (decoded.roles !== 'admin') {
-      return res.status(403).json(CreateError(403, "Forbidden"));
-    }
+    try {
+        if(!req.headers['session_token']){
+            return res.status(403).json(CreateError(403, "Forbidden"));
+          };
+        const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+        //also check if the decoded token is still valid.
+        if (decoded.roles !== 'admin') {
+          return res.status(403).json(CreateError(403, "Forbidden"));
+        }
+      } catch (error) {
+           return res.status(403).json(CreateError(403, "Forbidden", error))
+      }
     if (!pond) {
       return res.status(404).json(CreateError(404, "Pond not found"));
     }
@@ -200,19 +203,18 @@ export const deleteReadingBySerialNumberPasskey = (req, res) => {
     if (!serialNumber || !passKey) {
         return res.status(400).json(CreateError(400, "Serial number and passkey are required."));
     }
-    if(!req.headers['session_token']){
-      return res.status(403).json(CreateError(403, "Forbidden"));
-    };
-    //Check if user deleting is an admin.
-    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
-    //also check if the decoded token is still valid.
-    const currentTime = new Date().getTime();
-    if (decoded.exp * 1000 < currentTime) {
-      return res.status(403).json(CreateError(403, "Token expired"));
-    }
-    if (decoded.roles !== 'admin') {
-      return res.status(403).json(CreateError(403, "Forbidden"));
-    }
+    try {
+        if(!req.headers['session_token']){
+            return res.status(403).json(CreateError(403, "Forbidden"));
+          };
+        const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+        //also check if the decoded token is still valid.
+        if (decoded.roles !== 'admin') {
+          return res.status(403).json(CreateError(403, "Forbidden"));
+        }
+      } catch (error) {
+           return res.status(403).json(CreateError(403, "Forbidden", error))
+      }
     
    //Finds if there is any ESP32 reading with the serialNumber and passKey
     Esp32.find({serialNumber: serialNumber, passKey: passKey})

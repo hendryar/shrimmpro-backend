@@ -212,26 +212,18 @@ export const update = async (req, res, next) => {
     const getFieldValue = (fieldValue) => Array.isArray(fieldValue) ? fieldValue[0] : fieldValue;
     const token = req.headers['session_token'];
     const userId = getFieldValue(fields.userId);
-    // Decode the token
-    let decoded;
-    if(!req.headers['session_token']){
-      return res.status(403).json(CreateError(403, "Forbidden"));
-    };
-    try {
-      decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-    } catch (error) {
-      console.error("Error verifying token:", error);
-      return res.status(403).json(CreateError(403, "Invalid token"));
-    }
 
-    // Check if the user has admin role
-    if (decoded.roles !== 'admin') {
-      return res.status(403).json(CreateError(403, "Forbidden"));
-    }
-    // Check if the token is still valid at this time
-    const currentTime = new Date().getTime();
-    if (decoded.exp * 1000 < currentTime) {
-      return res.status(403).json(CreateError(403, "Token expired"));
+    try {
+      if(!req.headers['session_token']){
+          return res.status(403).json(CreateError(403, "Forbidden"));
+        };
+      const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+      //also check if the decoded token is still valid.
+      if (decoded.roles !== 'admin') {
+        return res.status(403).json(CreateError(403, "Forbidden"));
+      }
+    } catch (error) {
+         return res.status(403).json(CreateError(403, "Forbidden", error))
     }
 
     // Retrieve the user by ID
@@ -345,19 +337,19 @@ export const deleteUser = async (req, res, next) => {
   try {
     const userId = req.query.userId;
     const user = await User.findById(userId);
-    if(!req.headers['session_token']){
-      return res.status(403).json(CreateError(403, "Forbidden"));
-    };
     //check from the token received that the user is an admin
     //if not, return an error
-    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
-    //also check if the decoded token is still valid.
-    const currentTime = new Date().getTime();
-    if (decoded.exp * 1000 < currentTime) {
-      return res.status(403).json(CreateError(403, "Token expired"));
-    }
-    if (decoded.roles !== 'admin') {
-      return res.status(403).json(CreateError(403, "Forbidden"));
+    try {
+      if(!req.headers['session_token']){
+          return res.status(403).json(CreateError(403, "Forbidden"));
+        };
+      const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+      //also check if the decoded token is still valid.
+      if (decoded.roles !== 'admin') {
+        return res.status(403).json(CreateError(403, "Forbidden"));
+      }
+    } catch (error) {
+         return res.status(403).json(CreateError(403, "Forbidden", error))
     }
     if (!user) {
       return res.status(404).json(CreateError(404, "User not found"));
@@ -377,19 +369,19 @@ export const deleteUser = async (req, res, next) => {
 export const getAllUsers = async (req, res, next) => {
   try {
     //check if session token is present.
-    if(!req.headers['session_token']){
-      return res.status(403).json(CreateError(403, "Forbidden"));
-    };
     //check from the token received that the user is an admin
     //if not, return an error
-    const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
-    //also check if the decoded token is still valid.
-    const currentTime = new Date().getTime();
-    if (decoded.exp * 1000 < currentTime) {
-      return res.status(403).json(CreateError(403, "Token expired"));
-    }
-    if (decoded.roles !== 'admin') {
-      return res.status(403).json(CreateError(403, "Forbidden"));
+    try {
+      if(!req.headers['session_token']){
+          return res.status(403).json(CreateError(403, "Forbidden"));
+        };
+      const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+      //also check if the decoded token is still valid.
+      if (decoded.roles !== 'admin') {
+        return res.status(403).json(CreateError(403, "Forbidden"));
+      }
+    } catch (error) {
+         return res.status(403).json(CreateError(403, "Forbidden", error))
     }
     const users = await User.find({}, { password: 0, __v: 0, updatedAt: 0 });
     return res.status(200).json(CreateSuccess(200, "Users retrieved successfully", users));
