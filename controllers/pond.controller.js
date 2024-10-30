@@ -201,6 +201,7 @@ export const getPondById = (req, res) => {
 //Validated Working
 //Retrieve all Ponds from the database.
 export const findAll = (req, res) => {
+    console.log("finding all ponds kepanggil");
     Pond.find()
         .then(data => {
             return res.status(200).json(CreateSuccess(200, "Pond retrieved successfully!", data));

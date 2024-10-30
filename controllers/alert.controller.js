@@ -101,11 +101,7 @@ export const createAlert = async (pondId, info, socket) => {
         });
         console.log("New alert created: ", newAlert);
         console.log("Saving new alert");
-
         await newAlert.save();
-
-                
-
         // Emit the alert via WebSocket if a socket instance is provided
         if (socket) {
             socket.to(pondId).emit('alert', {
@@ -116,18 +112,6 @@ export const createAlert = async (pondId, info, socket) => {
                 timestamp: newAlert.alertTime
             });
         }
-        // if (socket) {
-        //     // Ensure alertType is a comma-separated string
-        
-        //     socket.to(pondId).emit('alert', {
-        //         alertType: alertTypeString, // Send the string here
-        //         alertStatus: newAlert.alertStatus,
-        //         alertMessage: newAlert.alertMessage,
-        //         pondId: newAlert.pondId,
-        //         timestamp: newAlert.alertTime
-        //     });
-        // }
-        
 
         // Exclude __v and updatedAt from the response
         const { __v, updatedAt, ...alertWithoutVAndUpdated } = newAlert.toObject();
@@ -159,7 +143,7 @@ export const findAll = (req, res) => {
 
 // Find a single Alert with an id
 export const findId = (req, res) => {
-    const id = req.params.id;
+    const id = req.query.alertId;
 
     Alert.findById(id)
         .then(data => {
