@@ -3,6 +3,6 @@ import { generateReport } from  '../controllers/report.controller.js'
 
 const router = express.Router();
 
-router.post('/report', generateReport);
+router.get('/generate', generateReport);
 
 export default router;

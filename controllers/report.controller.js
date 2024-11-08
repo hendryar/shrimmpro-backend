@@ -74,7 +74,7 @@ export const generateReport = async (req, res) => {
                         timeFrame: {
                             $cond: {
                                 if: { $eq: [type, "daily"] },
-                                then: { $hour: "$createdAt" },
+                                then: { $hour: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } },
                                 else: { $cond: {
                                     if: { $eq: [type, "weekly"] },
                                     then: { $dayOfWeek: "$createdAt" },
@@ -137,6 +137,44 @@ export const generateReport = async (req, res) => {
         });
 
         // Retrieve alert data
+        //v1 gmt +0
+        // const alerts = await Alert.aggregate([
+        //     {
+        //         $match: {
+        //             pondId: { $in: pondIds },
+        //             createdAt: { $gte: startDate, ...(endDate ? { $lte: endDate } : {}) }
+        //         }
+        //     },
+        //     {
+        //         $group: {
+        //             _id: {
+        //                 pondId: "$pondId",
+        //                 timeFrame: {
+        //                     // $cond: {
+        //                     //     if: { $eq: [type, "daily"] },
+        //                     //     then: { $hour: "$createdAt" + 8},
+        //                     //     else: { $cond: {
+        //                     //         if: { $eq: [type, "weekly"] },
+        //                     //         then: { $dayOfWeek: "$createdAt" },
+        //                     //         else: { $cond: {
+        //                     //             if: { $eq: [type, "monthly"] },
+        //                     //             then: { $week: "$createdAt" },
+        //                     //             else: { $month: "$createdAt" }
+        //                     //         }}
+        //                     //     }}
+        //                     // }
+
+                        
+
+        //                 }
+        //             },
+        //             totalAlerts: { $sum: 1 },
+        //             criticalAlerts: { $sum: { $cond: [{ $eq: ["$alertStatus", "critical"] }, 1, 0] } },
+        //             warningAlerts: { $sum: { $cond: [{ $eq: ["$alertStatus", "warning"] }, 1, 0] } }
+        //         }
+        //     }
+        // ]);
+
         const alerts = await Alert.aggregate([
             {
                 $match: {
@@ -151,16 +189,20 @@ export const generateReport = async (req, res) => {
                         timeFrame: {
                             $cond: {
                                 if: { $eq: [type, "daily"] },
-                                then: { $hour: "$createdAt" },
-                                else: { $cond: {
-                                    if: { $eq: [type, "weekly"] },
-                                    then: { $dayOfWeek: "$createdAt" },
-                                    else: { $cond: {
-                                        if: { $eq: [type, "monthly"] },
-                                        then: { $week: "$createdAt" },
-                                        else: { $month: "$createdAt" }
-                                    }}
-                                }}
+                                then: { $hour: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } },
+                                else: {
+                                    $cond: {
+                                        if: { $eq: [type, "weekly"] },
+                                        then: { $dayOfWeek: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } },
+                                        else: {
+                                            $cond: {
+                                                if: { $eq: [type, "monthly"] },
+                                                then: { $week: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } },
+                                                else: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     },
@@ -170,6 +212,7 @@ export const generateReport = async (req, res) => {
                 }
             }
         ]);
+        
 
         // Combine readings and alerts in the report
         const result = ponds.map((pond) => ({
