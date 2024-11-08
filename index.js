@@ -53,6 +53,10 @@ app.use('/period', periodRoutes);
 import alertRoutes from './routes/alert.js';
 app.use('/alert', alertRoutes);
 
+//Impoert Report routes
+import reportRoutes from './routes/report.js';
+app.use('/report', reportRoutes);
+
 // Serve user images statically
 app.use('/userimg', express.static(path.join(__dirname, 'userimg')));
 

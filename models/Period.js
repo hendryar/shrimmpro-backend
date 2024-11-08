@@ -16,10 +16,6 @@ const PeriodSchema = mongoose.Schema({
         type: Date,
         required: false,
     },
-    pondId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Pond"
-    },
     isActive: {
         type: Boolean,
         required: true,
