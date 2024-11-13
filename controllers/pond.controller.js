@@ -213,43 +213,73 @@ export const findAll = (req, res) => {
 
 //Untested
 // Update a Pond by the id in the request
-
-//UNTESTED!!!!
-export const update = (req, res) => {
+export const update = async (req, res) => {
     try {
-        if(!req.headers['session_token']){
+        // Check session token and role
+        if (!req.headers['session_token']) {
             return res.status(403).json(CreateError(403, "Forbidden"));
-          };
-        const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
-        //also check if the decoded token is still valid.
-        if (decoded.roles !== 'admin') {
-          return res.status(403).json(CreateError(403, "Forbidden"));
         }
-      } catch (error) {
-           return res.status(403).json(CreateError(403, "Forbidden", error))
-      }
-    console.log("req.body: ", req.body);
-    if (!req.body) {
-        return res.status(400).json(CreateError(400, "Data to update can not be empty!"));
-    }
+        const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
+        if (decoded.roles !== 'admin') {
+            return res.status(403).json(CreateError(403, "Forbidden"));
+        }
 
-    const id = req.body.pondId;
-    const minmax = minmaxvalidator(req, res);
-    if (minmax) {
-        return minmax;
-    }
+        // Check if the request body is not empty
+        if (!req.body) {
+            return res.status(400).json(CreateError(400, "Data to update cannot be empty!"));
+        }
 
-    Pond.findByIdAndUpdate(id, req.body, {useFindAndModify: false})
-        .then(data => {
-            if (!data) {
-                return res.status(404).json(CreateError(404, `Cannot update Pond with id=${id}. Maybe Pond was not found!`));
-            } else 
-            return res.send({message: "Pond was updated successfully."});
-        })
-        .catch(err => {
-            return res.status(500).json(CreateError(500, "Error updating Pond with id=" + id));
-        });
-}
+        const { pondId, connectedEsp32Serial, connectedEsp32Passkey, name } = req.body;
+
+        // Validate ESP32 pairing
+        if (connectedEsp32Serial && !connectedEsp32Passkey) {
+            return res.status(400).json(CreateError(400, "Passkey is required!"));
+        }
+        if (!connectedEsp32Serial && connectedEsp32Passkey) {
+            return res.status(400).json(CreateError(400, "Serial Number is required!"));
+        }
+
+        // Check if the ESP32 serial and passkey are already connected to another pond
+        if (connectedEsp32Serial && connectedEsp32Passkey) {
+            const existingEsp32 = await Pond.findOne({
+                connectedEsp32Serial,
+                connectedEsp32Passkey,
+                _id: { $ne: pondId }  // Exclude the current pond from the check
+            });
+
+            if (existingEsp32) {
+                return res.status(400).json(CreateError(400, "ESP32 already connected to another Pond!"));
+            }
+        }
+
+        // Check if the pond name is unique (if updating the name)
+        if (name) {
+            const existingPond = await Pond.findOne({ name, _id: { $ne: pondId } });
+            if (existingPond) {
+                return res.status(400).json(CreateError(400, "Name already exists!"));
+            }
+        }
+
+        // Min/Max validation
+        const minmax = minmaxvalidator(req, res);
+        if (minmax) {
+            return minmax;
+        }
+
+        // Update the pond
+        const updatedPond = await Pond.findByIdAndUpdate(pondId, req.body, { new: true, useFindAndModify: false });
+
+        if (!updatedPond) {
+            return res.status(404).json(CreateError(404, `Cannot update Pond with id=${pondId}. Maybe Pond was not found!`));
+        }
+
+        return res.status(200).json(CreateSuccess(200, "Pond was updated successfully.", updatedPond));
+    } catch (err) {
+        console.error("Error updating pond: ", err);
+        return res.status(500).json(CreateError(500, "Error updating Pond.", err.toString()));
+    }
+};
+
 
 //Validated Working
 // Delete a Pond with the specified id in the request
@@ -330,40 +360,82 @@ export const deleteOne = (req, res) => {
 }
 
 //Valdiated working
-export const addEspToPond = (req, res) => {
+// export const addEspToPond = (req, res) => {
+//     console.log("masuk add esp to pond");
+//     const id = req.body.pondId;
+//     const esp32Serial = req.body.esp32Serial;
+//     const esp32Passkey = req.body.esp32Passkey;
+//     console.log("id: ", id);
+//     console.log("esp32Serial: ", esp32Serial);
+//     console.log("esp32Passkey: ", esp32Passkey);
+
+//     //find if any pond has the same serial number and passkey, if yes, return error
+//     Pond.find({connectedEsp32Serial: esp32Serial, connectedEsp32Passkey: esp32Passkey})
+//         .then(data => {
+//             if (data.length > 0) {
+//                 return res.status(400).json(CreateError(400, "ESP32 already connected to another Pond!"));
+//             }
+//         })
+
+//     console.log("start find and update");
+//     Pond.findByIdAndUpdate(id, {
+//         connectedEsp32Serial: esp32Serial,
+//         connectedEsp32Passkey: esp32Passkey
+//     }, {useFindAndModify: false})
+//         .then(data => {
+//             if (!data) {
+//                 return res.status(404).json(CreateError(404, `Cannot add ESP32 to Pond with id=${id}. Maybe Pond was not found!`));
+//             } else
+//             return res.status(200).json(CreateSuccess(200, "ESP32 added to Pond successfully!", data));
+//         })
+//         .catch(err => {
+//             console.log("error adding reading: ",err );
+//             return res.status(500).json(CreateError(500, "Error adding ESP32 to Pond with id=" + id, err));
+
+//         });
+// }
+
+
+export const addEspToPond = async (req, res) => {
     console.log("masuk add esp to pond");
-    const id = req.body.pondId;
-    const esp32Serial = req.body.esp32Serial;
-    const esp32Passkey = req.body.esp32Passkey;
-    console.log("id: ", id);
-    console.log("esp32Serial: ", esp32Serial);
-    console.log("esp32Passkey: ", esp32Passkey);
 
-    //find if any pond has the same serial number and passkey, if yes, return error
-    Pond.find({connectedEsp32Serial: esp32Serial, connectedEsp32Passkey: esp32Passkey})
-        .then(data => {
-            if (data.length > 0) {
-                return res.status(400).json(CreateError(400, "ESP32 already connected to another Pond!"));
-            }
-        })
+    const { pondId, esp32Serial, esp32Passkey } = req.body;
 
-    console.log("start find and update");
-    Pond.findByIdAndUpdate(id, {
-        connectedEsp32Serial: esp32Serial,
-        connectedEsp32Passkey: esp32Passkey
-    }, {useFindAndModify: false})
-        .then(data => {
-            if (!data) {
-                return res.status(404).json(CreateError(404, `Cannot add ESP32 to Pond with id=${id}. Maybe Pond was not found!`));
-            } else
-            return res.status(200).json(CreateSuccess(200, "ESP32 added to Pond successfully!", data));
-        })
-        .catch(err => {
-            console.log("error adding reading: ",err );
-            return res.status(500).json(CreateError(500, "Error adding ESP32 to Pond with id=" + id, err));
+    if (!pondId || !esp32Serial || !esp32Passkey) {
+        return res.status(400).json({ status: 400, message: "Missing required fields: pondId, esp32Serial, or esp32Passkey" });
+    }
 
-        });
-}
+    try {
+        // Check if any pond has the same ESP32 serial number and passkey
+        const existingPond = await Pond.findOne({ connectedEsp32Serial: esp32Serial, connectedEsp32Passkey: esp32Passkey });
+        
+        if (existingPond) {
+            // If found, respond with an error and exit
+            return res.status(400).json({ status: 400, message: "ESP32 already connected to another Pond!" });
+        }
+
+        console.log("start find and update");
+
+        // Update pond with the new ESP32 details
+        const updatedPond = await Pond.findByIdAndUpdate(pondId, {
+            connectedEsp32Serial: esp32Serial,
+            connectedEsp32Passkey: esp32Passkey
+        }, { new: true, useFindAndModify: false });
+
+        if (!updatedPond) {
+            // If no pond was found with the provided ID
+            return res.status(404).json({ status: 404, message: `Cannot add ESP32 to Pond with id=${pondId}. Maybe Pond was not found!` });
+        }
+
+        // Successfully updated
+        return res.status(200).json({ status: 200, message: "ESP32 added to Pond successfully!", data: updatedPond });
+
+    } catch (err) {
+        console.error("Error adding ESP32 to pond: ", err.toString());
+        return res.status(500).json({ status: 500, message: `Error adding ESP32 to Pond with id=${pondId}: ${err.toString()}` });
+    }
+};
+
 
 //Untested
 //TODO: perlu dibenerin
