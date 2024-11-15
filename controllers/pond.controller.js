@@ -406,7 +406,7 @@ export const addEspToPond = async (req, res) => {
 
 //Start and end date harus di set juga nanti
 export const getPondReading = (req, res) => {
-    const id = req.body.pondId;
+    const id = req.query.pondId;
     const startTime = req.body.startTime;
     const endTime = req.body.endTime;
 
