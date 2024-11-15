@@ -153,47 +153,53 @@ export const addReadingToDatabase = (req, res) => {
 
 
 
-export const deleteReadingByPondId = (req, res) => {
-    //This works by simply finding all ESP32 that has the pondId and deleting them.
+export const deleteReadingByPondId = async (req, res) => {
     const pondId = req.query.pondId;
+
     if (!pondId) {
         return res.status(400).json(CreateError(400, "Pond ID is required."));
     }
-    if(!req.headers['session_token']){
-      return res.status(403).json(CreateError(403, "Forbidden"));
-    };
-    const pond = Pond.findById(pondId);
+    if (!req.headers['session_token']) {
+        return res.status(403).json(CreateError(403, "Forbidden"));
+    }
+
     try {
-        if(!req.headers['session_token']){
-            return res.status(403).json(CreateError(403, "Forbidden"));
-          };
         const decoded = jwt.verify(req.headers['session_token'], process.env.TOKEN_SECRET);
-        //also check if the decoded token is still valid.
         if (decoded.roles !== 'admin') {
-          return res.status(403).json(CreateError(403, "Forbidden"));
+            return res.status(403).json(CreateError(403, "Forbidden"));
         }
-      } catch (error) {
-           return res.status(403).json(CreateError(403, "Forbidden", error))
-      }
-    if (!pond) {
-      return res.status(404).json(CreateError(404, "Pond not found"));
-    }
-    if(Esp32.find({pondId: pondId}).length == 0){
-        return res.status(404).json(CreateError(404, "No readings found with the pondId provided."));
-    }
-    try {
-        Esp32.deleteMany({pondId: pondId})
-        .then(data => {
-            return res.status(200).json(CreateSuccess(200, "Readings deleted successfully!", data));
-        })
-        .catch(err => {
-            return res.status(500).json(CreateError(500, "Some error occurred while deleting readings.", err));
-        });
     } catch (error) {
-      return res.status(500).json(CreateError(500, "Error Deleting Pond",error)); 
+        return res.status(403).json(CreateError(403, "Forbidden", error));
     }
-    
-}
+
+    try {
+        const pond = await Pond.findById(pondId);
+        if (!pond) {
+            return res.status(404).json(CreateError(404, "Pond not found"));
+        }
+
+        const esp32Readings = await Esp32.find({ pondId: pondId });
+        if (esp32Readings.length === 0) {
+            return res.status(404).json(CreateError(404, "No readings found with the pondId provided."));
+        }
+
+        await Esp32.deleteMany({ pondId: pondId });
+
+        // Set connectedEsp32Serial and connectedEsp32Passkey to null
+        await Pond.updateOne(
+            { _id: pondId },
+            { $set: { connectedEsp32Serial: null, connectedEsp32Passkey: null } }
+        );
+
+        return res.status(200).json(CreateSuccess(200, "Readings deleted, and ESP32 credentials set to null successfully!"));
+
+    } catch (error) {
+        return res.status(500).json(CreateError(500, "Some error occurred while processing the request.", error));
+    }
+};
+
+
+
 
 //Delete all reading that has the serialNumber and passKey in the req body.
 //Used to delete all readings from a specific ESP32.

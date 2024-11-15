@@ -181,7 +181,7 @@ export const findPond = (req, res) => {
 //Validated Working
 //Finds a single pond by ID
 export const getPondById = (req, res) => {
-    const id = req.params.pondId;
+    const id = req.query.pondId;
     console.log("masuk id: ", id);
     Pond.findById(id).then(data => {
         console.log("data: ", data);
@@ -361,41 +361,7 @@ export const deleteOne = (req, res) => {
     }
 }
 
-//Valdiated working
-// export const addEspToPond = (req, res) => {
-//     console.log("masuk add esp to pond");
-//     const id = req.body.pondId;
-//     const esp32Serial = req.body.esp32Serial;
-//     const esp32Passkey = req.body.esp32Passkey;
-//     console.log("id: ", id);
-//     console.log("esp32Serial: ", esp32Serial);
-//     console.log("esp32Passkey: ", esp32Passkey);
 
-//     //find if any pond has the same serial number and passkey, if yes, return error
-//     Pond.find({connectedEsp32Serial: esp32Serial, connectedEsp32Passkey: esp32Passkey})
-//         .then(data => {
-//             if (data.length > 0) {
-//                 return res.status(400).json(CreateError(400, "ESP32 already connected to another Pond!"));
-//             }
-//         })
-
-//     console.log("start find and update");
-//     Pond.findByIdAndUpdate(id, {
-//         connectedEsp32Serial: esp32Serial,
-//         connectedEsp32Passkey: esp32Passkey
-//     }, {useFindAndModify: false})
-//         .then(data => {
-//             if (!data) {
-//                 return res.status(404).json(CreateError(404, `Cannot add ESP32 to Pond with id=${id}. Maybe Pond was not found!`));
-//             } else
-//             return res.status(200).json(CreateSuccess(200, "ESP32 added to Pond successfully!", data));
-//         })
-//         .catch(err => {
-//             console.log("error adding reading: ",err );
-//             return res.status(500).json(CreateError(500, "Error adding ESP32 to Pond with id=" + id, err));
-
-//         });
-// }
 
 
 export const addEspToPond = async (req, res) => {
@@ -449,7 +415,7 @@ export const getPondReading = (req, res) => {
     Pond.findById(id)
         .then(pond => {
             if (!pond) {
-                return res.status(404).json(CreateError(404, "Pond not found!", err));
+                return res.status(404).json(CreateError(404, "Pond not found!"));
             } else {
               //Find Esp32 with the same pondId as the id specified
               //Also sort by startTime and endTime
