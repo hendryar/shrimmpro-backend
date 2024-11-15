@@ -214,6 +214,8 @@ export const findAll = (req, res) => {
 //Untested
 // Update a Pond by the id in the request
 export const update = async (req, res) => {
+
+    console.log("DATA MASUK UPDATE: ", req.body);
     try {
         // Check session token and role
         if (!req.headers['session_token']) {
@@ -435,41 +437,6 @@ export const addEspToPond = async (req, res) => {
         return res.status(500).json({ status: 500, message: `Error adding ESP32 to Pond with id=${pondId}: ${err.toString()}` });
     }
 };
-
-
-//Untested
-//TODO: perlu dibenerin
-export const removeEspFromPond = async (req, res) => {
-    console.log("masuk delete esp from pond");
-    const id = req.body.pondId;
-    console.log("Deleting ESP32 from Pond with id: ", id);
-
-    try {
-        // Find the pond first, ensuring it exists
-        const pond = await Pond.findById(id);
-        if (!pond) {
-            return res.status(404).json(CreateError(404, "Pond not found!"));
-        }
-
-        // Proceed to update the pond
-        const updatedPond = await Pond.findByIdAndUpdate(id, {
-            connectedEsp32Serial: null,
-            connectedEsp32Passkey: null
-        }, { useFindAndModify: false, new: true });
-        Esp32.deleteMany({pondId: id})
-                .then(data => {
-                    console.log("Deleted ESP32 data associated with Pond with id=" + id);
-                })
-                .catch(err => {
-                    console.log("Error deleting ESP32 data associated with Pond with id=" + id);
-                });
-
-        return res.status(200).json(CreateSuccess(200, "ESP32 removed from Pond successfully!", updatedPond));
-    } catch (err) {
-        return res.status(500).json(CreateError(500, "Error removing ESP32 from Pond with id=" + id, err));
-    }
-};
-
 
 //Start and end date harus di set juga nanti
 export const getPondReading = (req, res) => {

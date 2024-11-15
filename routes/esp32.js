@@ -10,6 +10,7 @@ const jsonParser = bodyParser.json();
 //The esp32 routes themselves.
 router.post('/add', jsonParser, addReadingToDatabase);
 router.delete('/serial', jsonParser, deleteReadingBySerialNumberPasskey);
+router.delete('/delpond', deleteReadingByPondId);
 
 
 export default router;

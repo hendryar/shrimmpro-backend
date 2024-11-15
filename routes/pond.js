@@ -2,7 +2,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 
-import {create, setPondMinMax, findPond, getPondById, findAll, update, addEspToPond, getPondReading, getPondHighLow, deleteOne, getPondInfo, removeEspFromPond, 
+import {create, setPondMinMax, findPond, getPondById, findAll, update, addEspToPond, getPondReading, getPondHighLow, deleteOne, getPondInfo,
     getPondReadingPastWeek, getAllPondReadingPastWeek, getLatestPondHeight, getLatestPondPh
 , getLatestPondReading, getLatestPondTds, getLatestPondTemperature, getPondHeightTime, getPondPhTime, getPondTdsTime, getPondTemperatureTime, getPondReadingByDate} from '../controllers/pond.controller.js';
 
@@ -21,7 +21,6 @@ router.get('/r', getPondReading);
 router.get('/hl', getPondHighLow);
 router.delete('/', jsonParser, deleteOne);
 router.get('/info', getPondInfo);
-router.delete('/delesp', removeEspFromPond)
 router.get('/r/week', getPondReadingPastWeek);
 router.get('/r/week/all', getAllPondReadingPastWeek);
 router.get('/r/latest', getLatestPondReading);

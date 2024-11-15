@@ -3,6 +3,7 @@ import Pond from "../models/Pond.js";
 import { CreateSuccess } from "../utils/success.js";
 import { CreateError } from "../utils/error.js";
 import { createAlert } from "./alert.controller.js";
+import jwt from "jsonwebtoken";
 //v2
 // export const addReadingToDatabase = (req, res) => {
 //     const { serialNumber, passKey, phReading, heightReading, temperatureReading, tdsReading } = req.body;
