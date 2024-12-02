@@ -375,7 +375,7 @@ export const addEspToPond = async (req, res) => {
 
     try {
         // Check if any pond has the same ESP32 serial number and passkey
-        const existingPond = await Pond.findOne({ connectedEsp32Serial: esp32Serial, connectedEsp32Passkey: esp32Passkey });
+        const existingPond = await Pond.findOne({ connectedEsp32Serial: esp32Serial});
         
         if (existingPond) {
             // If found, respond with an error and exit
