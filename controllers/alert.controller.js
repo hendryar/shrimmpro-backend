@@ -2,22 +2,12 @@ import Alert from "../models/Alert.js";
 import Pond from "../models/Pond.js"
 import { CreateError } from "../utils/error.js";
 import { CreateSuccess } from "../utils/success.js";
+import mongoose from 'mongoose';
 
 
 // Create and Save a new Alert
-
-//semua alert yang dibuat harus cek pond idnya dulu, ada warning sama critical state
-//kalau misalnya ada alert dalam 15 menit terakhir untuk pond tersebut gaperlu di alert lagi, kespam coeg
-//kalau misalnya params mendekati 15% safe limit, keluarin alert dengan status warning.
-//kalau misalnya params melewati safe limit, itu masuk critical
-//JIKA warning sudah tembus ke 10%, regarless readingnya dalam 15 menit terakhir, keluarin warning baru.
-//this also applies to 5% limit, keluarin alert bodo amat.
-//Kalau dia critical, langsung keluarin alert, dan ini untuk throttle cek 15 menit terakhir, kan ada timestamp
-//jangan lupa pond id disimpen biar bisa di sort ambil per pond.
-
-
 export const createAlert = async (pondId, info, socket) => {
-    console.log("createalert kepanggil");
+    console.log("createalert called");
     try {
         const pond = await Pond.findById(pondId);
         if (!pond) {
@@ -25,12 +15,19 @@ export const createAlert = async (pondId, info, socket) => {
         }
 
         const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-        const recentAlerts = await Alert.find({
+
+        // Use `createdAt` instead of `alertTime` if needed
+        const recentAlert = await Alert.findOne({
             pondId: pondId,
-            alertTime: { $gte: fifteenMinutesAgo }
+            createdAt: { $gte: fifteenMinutesAgo } // Check against `createdAt`
         });
 
-        const shouldCreateNewAlert = (type, currentValue, safeMin, safeMax, lastStatus) => {
+        if (recentAlert) {
+            console.log(`Alert throttled: An alert was already issued within the last 15 minutes for pond ${pondId}.`);
+            return null; // Throttle alert creation
+        }
+
+        const shouldCreateNewAlert = (type, currentValue, safeMin, safeMax) => {
             const belowSafeLimit = currentValue < safeMin;
             const aboveSafeLimit = currentValue > safeMax;
             const warningLimit = 0.15;
@@ -48,11 +45,6 @@ export const createAlert = async (pondId, info, socket) => {
                 if (Math.abs(deviation) >= highWarningLimit) {
                     return { status: 'warning', message: `${type} is ${deviation.toFixed(2)} ${belowSafeLimit ? 'below' : 'above'} safe limits` };
                 }
-                if (Math.abs(deviation) >= warningLimit) {
-                    if (lastStatus !== 'warning' || new Date(lastStatus.alertTime) < fifteenMinutesAgo) {
-                        return { status: 'warning', message: `${type} is ${deviation.toFixed(2)} ${belowSafeLimit ? 'below' : 'above'} the 15% limit` };
-                    }
-                }
             }
 
             return null;
@@ -60,6 +52,7 @@ export const createAlert = async (pondId, info, socket) => {
 
         const alertTypes = [];
         let alertStatus = 'normal';
+        let alertMessage = ''; // Initialize the alertMessage variable
 
         const paramsToCheck = [
             { type: 'ph', currentValue: info.ph, safeMin: pond.safeMinPh, safeMax: pond.safeMaxPh },
@@ -68,18 +61,12 @@ export const createAlert = async (pondId, info, socket) => {
             { type: 'tds', currentValue: info.tds, safeMin: pond.safeMinTds, safeMax: pond.safeMaxTds },
         ];
 
-        let alertMessage = ''; // Initialize the alertMessage variable
-
         for (let param of paramsToCheck) {
-            const existingAlert = recentAlerts.find(alert => alert.alertType === param.type);
-            const lastStatus = existingAlert ? existingAlert.alertStatus : null;
-
-            const result = shouldCreateNewAlert(param.type, param.currentValue, param.safeMin, param.safeMax, lastStatus);
+            const result = shouldCreateNewAlert(param.type, param.currentValue, param.safeMin, param.safeMax);
             if (result) {
                 alertTypes.push(param.type);
-                // Add to the message and remove the period at the end for commas
-                alertMessage += `${result.message}, `; 
-                alertStatus = result.status;
+                alertMessage += `${result.message}, `;
+                alertStatus = result.status === 'critical' ? 'critical' : alertStatus;
             }
         }
 
@@ -89,6 +76,7 @@ export const createAlert = async (pondId, info, socket) => {
         }
 
         if (!alertTypes.length) {
+            console.log("No alerts to create.");
             return null;
         }
 
@@ -99,9 +87,10 @@ export const createAlert = async (pondId, info, socket) => {
             alertTime: new Date(),
             pondId: pondId
         });
+
         console.log("New alert created: ", newAlert);
-        console.log("Saving new alert");
         await newAlert.save();
+
         // Emit the alert via WebSocket if a socket instance is provided
         if (socket) {
             socket.to(pondId).emit('alert', {
@@ -122,24 +111,56 @@ export const createAlert = async (pondId, info, socket) => {
     }
 };
 
-
-
 // Retrieve all Alerts from the database.
-export const findAll = (req, res) => {
-    const alertType = req.query.alertType;
-    var condition = alertType ? { alertType: { $regex: new RegExp(alertType), $options: "i" } } : {};
+export const findAll = async (req, res) => {
+    try {
+        const { pondId, alertStatus } = req.body;
 
-    Alert.find(condition)
-        .then(data => {
-            res.send(data);
-        })
-        .catch(err => {
-            res.status(500).send({
-                message:
-                    err.message || "Some error occurred while retrieving alerts."
-            });
-        });
+        // Build the match stage for the aggregation pipeline
+        let matchStage = {};
+
+        // Match pondId if provided and not "all"
+        if (pondId && pondId !== "all") {
+            matchStage.pondId = pondId;
+        }
+
+        // Match alertStatus if provided and not "all"
+        if (alertStatus && alertStatus !== "all") {
+            matchStage.alertStatus = { $regex: new RegExp(`^${alertStatus}$`, "i") };
+        }
+
+        console.log("Match stage:", matchStage); // Debugging log
+
+        // Aggregation pipeline
+        const alerts = await Alert.aggregate([
+            { $match: matchStage }, // Match stage filters the documents
+            {
+                $addFields: {
+                    sortOrder: {
+                        $switch: {
+                            branches: [
+                                { case: { $eq: ["$alertStatus", "critical"] }, then: 1 },
+                                { case: { $eq: ["$alertStatus", "warning"] }, then: 2 },
+                                { case: { $eq: ["$alertStatus", "normal"] }, then: 3 }
+                            ],
+                            default: 4 // Any undefined or unexpected alertStatus comes last
+                        }
+                    }
+                }
+            },
+            { $sort: { sortOrder: 1, alertTime: -1 } }, // Sort by priority and most recent alertTime
+            { $project: { sortOrder: 0 } } // Remove sortOrder field from the output
+        ]);
+
+        console.log("Sorted alerts:", alerts); // Debugging log
+
+        res.status(200).json(CreateSuccess(200, "Alerts retrieved successfully", alerts));
+    } catch (err) {
+        console.error("Error in findAll:", err);
+        res.status(500).json(CreateError(500, "Failed to retrieve alerts"));
+    }
 };
+
 
 // Find a single Alert with an id
 export const findId = (req, res) => {
@@ -179,5 +200,48 @@ export const alertTime = (req, res) => {
         });
 };
 
+export const alertWithinDay = async (req, res) => {
+    try {
+        const pondId = req.query.pondId;
 
-//Cron jobs to automatically check for alerts
+        // Calculate the time range for the past 24 hours
+        const past24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const condition = { createdAt: { $gte: past24Hours } };
+        console.log("Match condition:", condition); // Debugging log
+
+        // Count the alerts grouped by status
+        const alerts = await Alert.aggregate([
+            { $match: condition },
+            {
+                $group: {
+                    _id: "$alertStatus",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        console.log("Aggregation results:", alerts); // Debugging log
+
+        // Separate counts into critical and warning
+        let criticalCount = 0;
+        let warningCount = 0;
+
+        alerts.forEach(alert => {
+            if (alert._id === "critical") criticalCount = alert.count;
+            if (alert._id === "warning") warningCount = alert.count;
+        });
+
+        // Return the counts
+        res.status(200).json(CreateSuccess(200, "Alert counts retrieved successfully", {
+            pondId: pondId || "all",
+            criticalCount,
+            warningCount
+        }));
+    } catch (error) {
+        console.error("Error in alertWithinDay:", error);
+        res.status(500).json(CreateError(500, "Failed to retrieve alert counts"));
+    }
+};
+
+
