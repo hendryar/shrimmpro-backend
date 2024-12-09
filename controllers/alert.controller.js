@@ -114,14 +114,26 @@ export const createAlert = async (pondId, info, socket) => {
 // Retrieve all Alerts from the database.
 export const findAll = async (req, res) => {
     try {
-        const { pondId, alertStatus } = req.body;
+        const { pondId, alertStatus } = req.query;
+
+        // Validate and find the pond
+        if (!mongoose.Types.ObjectId.isValid(pondId)) {
+            return res.status(400).json(CreateError(400, "Invalid Pond ID"));
+        }
+
+        const findPond = await Pond.findById(pondId);
+        console.log("Found pond: ", findPond);
+
+        if (!findPond) {
+            return res.status(404).json(CreateError(404, "Pond Not Found"));
+        }
 
         // Build the match stage for the aggregation pipeline
         let matchStage = {};
 
         // Match pondId if provided and not "all"
         if (pondId && pondId !== "all") {
-            matchStage.pondId = pondId;
+            matchStage.pondId = new mongoose.Types.ObjectId(pondId); // Convert to ObjectId
         }
 
         // Match alertStatus if provided and not "all"
@@ -160,7 +172,6 @@ export const findAll = async (req, res) => {
         res.status(500).json(CreateError(500, "Failed to retrieve alerts"));
     }
 };
-
 
 // Find a single Alert with an id
 export const findId = (req, res) => {
