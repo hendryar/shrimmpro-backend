@@ -30,8 +30,7 @@ export const createAlert = async (pondId, info, socket) => {
         const shouldCreateNewAlert = (type, currentValue, safeMin, safeMax) => {
             const belowSafeLimit = currentValue < safeMin;
             const aboveSafeLimit = currentValue > safeMax;
-            const warningLimit = 0.15;
-            const highWarningLimit = 0.1;
+            const highWarningLimit = 0.15;
             const criticalLimit = 0.05;
             let deviation = 0;
 
@@ -70,9 +69,9 @@ export const createAlert = async (pondId, info, socket) => {
             }
         }
 
-        // Capitalize the first letter of the alertMessage and remove trailing comma and space
+        // Include the pond name in the alert message
         if (alertMessage.length > 0) {
-            alertMessage = alertMessage.charAt(0).toUpperCase() + alertMessage.slice(1).trim().replace(/,\s*$/, '');
+            alertMessage = `${pond.name}: ${alertMessage.charAt(0).toUpperCase() + alertMessage.slice(1).trim().replace(/,\s*$/, '')}`;
         }
 
         if (!alertTypes.length) {
@@ -82,7 +81,7 @@ export const createAlert = async (pondId, info, socket) => {
 
         const newAlert = new Alert({
             alertType: alertTypes.join(', '),
-            alertMessage: alertMessage, // Now formatted correctly
+            alertMessage: alertMessage, // Now includes the pond name
             alertStatus: alertStatus,
             alertTime: new Date(),
             pondId: pondId
@@ -110,7 +109,6 @@ export const createAlert = async (pondId, info, socket) => {
         throw error;
     }
 };
-
 // Retrieve all Alerts from the database.
 export const findAll = async (req, res) => {
     try {
