@@ -245,7 +245,6 @@ export const update = async (req, res) => {
         if (connectedEsp32Serial && connectedEsp32Passkey) {
             const existingEsp32 = await Pond.findOne({
                 connectedEsp32Serial,
-                connectedEsp32Passkey,
                 _id: { $ne: pondId }  // Exclude the current pond from the check
             });
 

@@ -95,7 +95,7 @@ export const deleteReadingByPondId = async (req, res) => {
             return res.status(404).json(CreateError(404, "Pond not found"));
         }
 
-        await Esp32.deleteMany({ pondId: pondId });
+        // await Esp32.deleteMany({ pondId: pondId });
 
         // Set connectedEsp32Serial and connectedEsp32Passkey to null
         await Pond.updateOne(
