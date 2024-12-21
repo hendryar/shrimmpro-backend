@@ -92,7 +92,7 @@ export const createAlert = async (pondId, info, socket) => {
 
         // Emit the alert via WebSocket if a socket instance is provided
         if (socket) {
-            socket.emit('alert', {
+            socket.broadcast.emit('alert', {
                 alertType: newAlert.alertType,
                 alertStatus: newAlert.alertStatus,
                 alertMessage: newAlert.alertMessage,
