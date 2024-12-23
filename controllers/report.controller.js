@@ -26,7 +26,6 @@ const calculateMedian = (numbers) => {
 };
 
 
-// Express route handler to generate the report
 // export const generateReport = async (req, res) => {
 //     const { pondId, type, periodId } = req.query;
 //     let startDate, endDate;
@@ -74,7 +73,7 @@ const calculateMedian = (numbers) => {
 //             return res.status(404).json(CreateError(404, "No ponds found matching the criteria."));
 //         }
 
-//         // Retrieve sensor readings
+//         // Retrieve sensor readings grouped by month
 //         const readings = await Esp32.aggregate([
 //             {
 //                 $match: {
@@ -86,45 +85,24 @@ const calculateMedian = (numbers) => {
 //                 $group: {
 //                     _id: {
 //                         pondId: "$pondId",
-//                         timeFrame: {
-//                             $cond: {
-//                                 if: { $eq: [type, "daily"] },
-//                                 then: { $hour: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } },
-//                                 else: {
-//                                     $cond: {
-//                                         if: { $eq: [type, "weekly"] },
-//                                         then: { $dayOfWeek: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } },
-//                                         else: {
-//                                             $cond: {
-//                                                 if: { $eq: [type, "monthly"] },
-//                                                 then: { $week: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } },
-//                                                 else: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } }
-//                                             }
-//                                         }
-//                                     }
-//                                 }
-//                             }
-//                         }
+//                         year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } },
+//                         month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } }
 //                     },
-//                     // temperatureReadings: { $push: "$temperatureReading" },
-//                     // phReadings: { $push: "$phReading" },
-//                     // heightReadings: { $push: "$heightReading" },
-//                     // tdsReadings: { $push: "$tdsReading" },
 //                     minTemperature: { $min: "$temperatureReading" },
 //                     maxTemperature: { $max: "$temperatureReading" },
+//                     avgTemperature: { $avg: "$temperatureReading" },
 //                     minPh: { $min: "$phReading" },
 //                     maxPh: { $max: "$phReading" },
+//                     avgPh: { $avg: "$phReading" },
 //                     minHeight: { $min: "$heightReading" },
 //                     maxHeight: { $max: "$heightReading" },
+//                     avgHeight: { $avg: "$heightReading" },
 //                     minTds: { $min: "$tdsReading" },
 //                     maxTds: { $max: "$tdsReading" },
-//                     avgTemperature: { $avg: "$temperatureReading" },
-//                     avgPh: { $avg: "$phReading" },
-//                     avgHeight: { $avg: "$heightReading" },
-//                     avgTds: { $avg: "$tdsReading" },
+//                     avgTds: { $avg: "$tdsReading" }
 //                 }
 //             },
-//             { $sort: { "_id.timeFrame": 1 } }
+//             { $sort: { "_id.year": 1, "_id.month": 1 } }
 //         ]);
 
 //         // Retrieve alerts
@@ -258,11 +236,37 @@ export const generateReport = async (req, res) => {
             }
         ]);
 
-        // Combine readings and alerts
+        // Round all numerical fields in readings and alerts
+        const roundToFirstDecimal = (num) => Math.round(num * 10) / 10;
+
+        const roundedReadings = readings.map((reading) => ({
+            ...reading,
+            minTemperature: roundToFirstDecimal(reading.minTemperature),
+            maxTemperature: roundToFirstDecimal(reading.maxTemperature),
+            avgTemperature: roundToFirstDecimal(reading.avgTemperature),
+            minPh: roundToFirstDecimal(reading.minPh),
+            maxPh: roundToFirstDecimal(reading.maxPh),
+            avgPh: roundToFirstDecimal(reading.avgPh),
+            minHeight: roundToFirstDecimal(reading.minHeight),
+            maxHeight: roundToFirstDecimal(reading.maxHeight),
+            avgHeight: roundToFirstDecimal(reading.avgHeight),
+            minTds: roundToFirstDecimal(reading.minTds),
+            maxTds: roundToFirstDecimal(reading.maxTds),
+            avgTds: roundToFirstDecimal(reading.avgTds)
+        }));
+
+        const roundedAlerts = alerts.map((alert) => ({
+            ...alert,
+            totalAlerts: roundToFirstDecimal(alert.totalAlerts),
+            criticalAlerts: roundToFirstDecimal(alert.criticalAlerts),
+            warningAlerts: roundToFirstDecimal(alert.warningAlerts)
+        }));
+
+        // Combine rounded readings and alerts
         const report = ponds.map((pond) => ({
             pond: pond.name,
-            readings: readings.filter((r) => r._id.pondId.toString() === pond._id.toString()),
-            alerts: alerts.filter((a) => a._id.toString() === pond._id.toString())
+            readings: roundedReadings.filter((r) => r._id.pondId.toString() === pond._id.toString()),
+            alerts: roundedAlerts.filter((a) => a._id.toString() === pond._id.toString())
         }));
 
         res.status(200).json(CreateSuccess(200, "Report generated successfully", report));
