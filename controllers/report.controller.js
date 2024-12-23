@@ -18,20 +18,14 @@ import mongoose from "mongoose";
 //for daily data, present an average data of each hour within the past 24 hours. for weekly, presents data of the past week, for monthly presents data within the past month, and period presents data according to the 'periodStart' and 'periodEnd' of the period in which the id was supplied.
 
 
-// Utility to calculate median
-const calculateMedian = (numbers) => {
-    const sorted = numbers.slice().sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-};
-
-
+//v2 bermasalah di period gamau masuk bulan pertama.
 // export const generateReport = async (req, res) => {
-//     const { pondId, type, periodId } = req.query;
+//     const { pondId, type } = req.query; // Removed periodId
 //     let startDate, endDate;
 
 //     try {
 //         const now = new Date();
+//         const timezoneOffset = parseInt(process.env.TIMEZONE || 0, 10); // Default to GMT if TIMEZONE is not set
 
 //         // Determine the date range based on type
 //         if (type === "daily") {
@@ -41,15 +35,12 @@ const calculateMedian = (numbers) => {
 //         } else if (type === "monthly") {
 //             startDate = new Date(now.setMonth(now.getMonth() - 1));
 //         } else if (type === "period") {
-//             if (!periodId) {
-//                 return res.status(400).json(CreateError(400, "Period ID is required for 'period' type."));
+//             const activePeriod = await Period.findOne({ isActive: true }); // Find active period
+//             if (!activePeriod) {
+//                 return res.status(404).json(CreateError(404, "No active period found."));
 //             }
-//             const period = await Period.findById(periodId);
-//             if (!period) {
-//                 return res.status(404).json(CreateError(404, "Period not found."));
-//             }
-//             startDate = period.periodStart;
-//             endDate = period.periodEnd || new Date();
+//             startDate = activePeriod.periodStart;
+//             endDate = activePeriod.periodEnd || now; // Use current date if periodEnd is not defined
 //         } else {
 //             return res.status(400).json(CreateError(400, "Invalid report type."));
 //         }
@@ -73,7 +64,57 @@ const calculateMedian = (numbers) => {
 //             return res.status(404).json(CreateError(404, "No ponds found matching the criteria."));
 //         }
 
-//         // Retrieve sensor readings grouped by month
+//         // Aggregation logic based on report type
+//         let groupStage = {};
+//         let sortStage = {};
+
+//         if (type === "daily") {
+//             // Group by hour for daily reports
+//             groupStage = {
+//                 _id: {
+//                     pondId: "$pondId",
+//                     year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+//                     month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+//                     day: { $dayOfMonth: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+//                     hour: { $hour: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } }
+//                 }
+//             };
+//             sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1, "_id.hour": 1 };
+//         } else if (type === "weekly") {
+//             // Group by day for weekly reports
+//             groupStage = {
+//                 _id: {
+//                     pondId: "$pondId",
+//                     year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+//                     month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+//                     day: { $dayOfMonth: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } }
+//                 }
+//             };
+//             sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
+//         } else if (type === "monthly") {
+//             // Group by week for monthly reports
+//             groupStage = {
+//                 _id: {
+//                     pondId: "$pondId",
+//                     year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+//                     month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+//                     week: { $week: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } }
+//                 }
+//             };
+//             sortStage = { "_id.year": 1, "_id.month": 1, "_id.week": 1 };
+//         } else if (type === "period") {
+//             // Group by month for period reports
+//             groupStage = {
+//                 _id: {
+//                     pondId: "$pondId",
+//                     year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+//                     month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } }
+//                 }
+//             };
+//             sortStage = { "_id.year": 1, "_id.month": 1 };
+//         }
+
+//         // Perform the aggregation
 //         const readings = await Esp32.aggregate([
 //             {
 //                 $match: {
@@ -83,11 +124,7 @@ const calculateMedian = (numbers) => {
 //             },
 //             {
 //                 $group: {
-//                     _id: {
-//                         pondId: "$pondId",
-//                         year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } },
-//                         month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } }
-//                     },
+//                     ...groupStage,
 //                     minTemperature: { $min: "$temperatureReading" },
 //                     maxTemperature: { $max: "$temperatureReading" },
 //                     avgTemperature: { $avg: "$temperatureReading" },
@@ -102,7 +139,7 @@ const calculateMedian = (numbers) => {
 //                     avgTds: { $avg: "$tdsReading" }
 //                 }
 //             },
-//             { $sort: { "_id.year": 1, "_id.month": 1 } }
+//             { $sort: sortStage }
 //         ]);
 
 //         // Retrieve alerts
@@ -123,11 +160,37 @@ const calculateMedian = (numbers) => {
 //             }
 //         ]);
 
-//         // Combine readings and alerts
+//         // Round all numerical fields in readings and alerts
+//         const roundToFirstDecimal = (num) => Math.round(num * 10) / 10;
+
+//         const roundedReadings = readings.map((reading) => ({
+//             ...reading,
+//             minTemperature: roundToFirstDecimal(reading.minTemperature),
+//             maxTemperature: roundToFirstDecimal(reading.maxTemperature),
+//             avgTemperature: roundToFirstDecimal(reading.avgTemperature),
+//             minPh: roundToFirstDecimal(reading.minPh),
+//             maxPh: roundToFirstDecimal(reading.maxPh),
+//             avgPh: roundToFirstDecimal(reading.avgPh),
+//             minHeight: roundToFirstDecimal(reading.minHeight),
+//             maxHeight: roundToFirstDecimal(reading.maxHeight),
+//             avgHeight: roundToFirstDecimal(reading.avgHeight),
+//             minTds: roundToFirstDecimal(reading.minTds),
+//             maxTds: roundToFirstDecimal(reading.maxTds),
+//             avgTds: roundToFirstDecimal(reading.avgTds)
+//         }));
+
+//         const roundedAlerts = alerts.map((alert) => ({
+//             ...alert,
+//             totalAlerts: roundToFirstDecimal(alert.totalAlerts),
+//             criticalAlerts: roundToFirstDecimal(alert.criticalAlerts),
+//             warningAlerts: roundToFirstDecimal(alert.warningAlerts)
+//         }));
+
+//         // Combine rounded readings and alerts
 //         const report = ponds.map((pond) => ({
 //             pond: pond.name,
-//             readings: readings.filter((r) => r._id.pondId.toString() === pond._id.toString()),
-//             alerts: alerts.filter((a) => a._id.toString() === pond._id.toString())
+//             readings: roundedReadings.filter((r) => r._id.pondId.toString() === pond._id.toString()),
+//             alerts: roundedAlerts.filter((a) => a._id.toString() === pond._id.toString())
 //         }));
 
 //         res.status(200).json(CreateSuccess(200, "Report generated successfully", report));
@@ -138,13 +201,13 @@ const calculateMedian = (numbers) => {
 // };
 
 
-
 export const generateReport = async (req, res) => {
-    const { pondId, type, periodId } = req.query;
+    const { pondId, type } = req.query; // Removed periodId
     let startDate, endDate;
 
     try {
         const now = new Date();
+        const timezoneOffset = parseInt(process.env.TIMEZONE || 0, 10); // Default to GMT if TIMEZONE is not set
 
         // Determine the date range based on type
         if (type === "daily") {
@@ -154,15 +217,12 @@ export const generateReport = async (req, res) => {
         } else if (type === "monthly") {
             startDate = new Date(now.setMonth(now.getMonth() - 1));
         } else if (type === "period") {
-            if (!periodId) {
-                return res.status(400).json(CreateError(400, "Period ID is required for 'period' type."));
+            const activePeriod = await Period.findOne({ isActive: true }); // Find active period
+            if (!activePeriod) {
+                return res.status(404).json(CreateError(404, "No active period found."));
             }
-            const period = await Period.findById(periodId);
-            if (!period) {
-                return res.status(404).json(CreateError(404, "Period not found."));
-            }
-            startDate = period.periodStart;
-            endDate = period.periodEnd || new Date();
+            startDate = activePeriod.periodStart;
+            endDate = activePeriod.periodEnd || now; // Use current date if periodEnd is not defined
         } else {
             return res.status(400).json(CreateError(400, "Invalid report type."));
         }
@@ -186,7 +246,57 @@ export const generateReport = async (req, res) => {
             return res.status(404).json(CreateError(404, "No ponds found matching the criteria."));
         }
 
-        // Retrieve sensor readings grouped by month
+        // Aggregation logic based on report type
+        let groupStage = {};
+        let sortStage = {};
+
+        if (type === "daily") {
+            // Group by hour for daily reports
+            groupStage = {
+                _id: {
+                    pondId: "$pondId",
+                    year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+                    month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+                    day: { $dayOfMonth: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+                    hour: { $hour: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } }
+                }
+            };
+            sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1, "_id.hour": 1 };
+        } else if (type === "weekly") {
+            // Group by day for weekly reports
+            groupStage = {
+                _id: {
+                    pondId: "$pondId",
+                    year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+                    month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+                    day: { $dayOfMonth: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } }
+                }
+            };
+            sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
+        } else if (type === "monthly") {
+            // Group by week for monthly reports
+            groupStage = {
+                _id: {
+                    pondId: "$pondId",
+                    year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+                    month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+                    week: { $week: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } }
+                }
+            };
+            sortStage = { "_id.year": 1, "_id.month": 1, "_id.week": 1 };
+        } else if (type === "period") {
+            // Group by month for period reports
+            groupStage = {
+                _id: {
+                    pondId: "$pondId",
+                    year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } },
+                    month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: timezoneOffset } } }
+                }
+            };
+            sortStage = { "_id.year": 1, "_id.month": 1 };
+        }
+
+        // Perform the aggregation
         const readings = await Esp32.aggregate([
             {
                 $match: {
@@ -196,11 +306,7 @@ export const generateReport = async (req, res) => {
             },
             {
                 $group: {
-                    _id: {
-                        pondId: "$pondId",
-                        year: { $year: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } },
-                        month: { $month: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 8 } } }
-                    },
+                    ...groupStage,
                     minTemperature: { $min: "$temperatureReading" },
                     maxTemperature: { $max: "$temperatureReading" },
                     avgTemperature: { $avg: "$temperatureReading" },
@@ -215,7 +321,7 @@ export const generateReport = async (req, res) => {
                     avgTds: { $avg: "$tdsReading" }
                 }
             },
-            { $sort: { "_id.year": 1, "_id.month": 1 } }
+            { $sort: sortStage }
         ]);
 
         // Retrieve alerts
@@ -275,3 +381,7 @@ export const generateReport = async (req, res) => {
         res.status(500).json(CreateError(500, error.message));
     }
 };
+
+
+
+
