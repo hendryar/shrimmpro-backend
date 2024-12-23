@@ -5,8 +5,11 @@ import { CreateSuccess } from "../utils/success.js";
 import mongoose from "mongoose";
 
 // Create and Save a new Alert
+
+
 export const createAlert = async (pondId, info, socket) => {
   console.log("createalert called");
+  // console.log("soket: ", socket);
   try {
     const pond = await Pond.findById(pondId);
     if (!pond) {
@@ -16,15 +19,15 @@ export const createAlert = async (pondId, info, socket) => {
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
     // Use `createdAt` instead of `alertTime` if needed
-    const recentAlert = await Alert.findOne({
-      pondId: pondId,
-      createdAt: { $gte: fifteenMinutesAgo }, // Check against `createdAt`
-    });
+    // const recentAlert = await Alert.findOne({
+    //   pondId: pondId,
+    //   createdAt: { $gte: fifteenMinutesAgo }, // Check against `createdAt`
+    // });
 
-    if (recentAlert) {
-      console.log(`Alert throttled: An alert was already issued within the last 15 minutes for pond ${pondId}.`);
-      return null; // Throttle alert creation
-    }
+    // if (recentAlert) {
+    //   console.log(`Alert throttled: An alert was already issued within the last 15 minutes for pond ${pondId}.`);
+    //   return null; // Throttle alert creation
+    // }
 
     const shouldCreateNewAlert = (type, currentValue, safeMin, safeMax) => {
       const belowSafeLimit = currentValue < safeMin;
@@ -89,8 +92,9 @@ export const createAlert = async (pondId, info, socket) => {
     console.log("New alert created: ", newAlert);
     await newAlert.save();
 
-    if (socket && socket.broadcast && typeof socket.broadcast.emit === "function") {
-      socket.broadcast.emit("alert", {
+    if (socket && typeof socket.emit === "function") {
+      console.log("Broadcasting alert to all clients...");
+      socket.emit("alert", {
         alertType: newAlert.alertType,
         alertStatus: newAlert.alertStatus,
         alertMessage: newAlert.alertMessage,
@@ -98,7 +102,7 @@ export const createAlert = async (pondId, info, socket) => {
         timestamp: newAlert.alertTime,
       });
     } else {
-      console.warn("Socket object is not valid or not provided.");
+      console.warn("Socket.IO server instance is not valid or not provided.");
     }
 
     // Exclude __v and updatedAt from the response
