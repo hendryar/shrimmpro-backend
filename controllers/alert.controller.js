@@ -7,91 +7,291 @@ import mongoose from "mongoose";
 // Create and Save a new Alert
 
 
+
+
+// export const createAlert = async (pondId, info, socket) => {
+//   console.log("createAlert called");
+//   try {
+//     // 1. Fetch the pond details from DB
+//     const pond = await Pond.findById(pondId);
+//     if (!pond) {
+//       throw new Error("Pond Not Found");
+//     }
+
+//     // 2. (Optional) Throttle check: block if there's an alert in the last 15 mins
+//     // const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+//     // const recentAlert = await Alert.findOne({
+//     //   pondId: pondId,
+//     //   createdAt: { $gte: fifteenMinutesAgo },
+//     // });
+//     // if (recentAlert) {
+//     //   console.log(
+//     //     `Alert throttled: An alert was already issued within the last 15 minutes for pond ${pondId}.`
+//     //   );
+//     //   return null;
+//     // }
+
+//     // 3. Define logic for categorizing an alert
+//     const highWarningLimit = 0.15; // 15% of safe min/max => "warning"
+
+//     const shouldCreateNewAlert = (type, currentValue, safeMin, safeMax) => {
+//       // -- CRITICAL: If reading is beyond the safe boundaries
+//       if (currentValue < safeMin || currentValue > safeMax) {
+//         return {
+//           status: "critical",
+//           message: `${type} is out of safe range (${currentValue} vs [${safeMin}, ${safeMax}])`,
+//         };
+//       }
+
+//       // -- WARNING: If reading is within 15% of min or max
+//       const warningLowerBound = safeMin + safeMin * highWarningLimit;
+//       const warningUpperBound = safeMax - safeMax * highWarningLimit;
+//       if (currentValue <= warningLowerBound || currentValue >= warningUpperBound) {
+//         return {
+//           status: "warning",
+//           message: `${type} is nearing the unsafe range (${currentValue} vs [${safeMin}, ${safeMax}])`,
+//         };
+//       }
+
+//       // -- Otherwise, no alert
+//       return null;
+//     };
+
+//     // 4. Check each parameter (pH, temperature, etc.)
+//     const paramsToCheck = [
+//       { type: "ph",          currentValue: info.ph,          safeMin: pond.safeMinPh,          safeMax: pond.safeMaxPh },
+//       { type: "temperature", currentValue: info.temperature, safeMin: pond.safeMinTemperature, safeMax: pond.safeMaxTemperature },
+//       { type: "height",      currentValue: info.height,      safeMin: pond.safeMinHeight,      safeMax: pond.safeMaxHeight },
+//       { type: "tds",         currentValue: info.tds,         safeMin: pond.safeMinTds,         safeMax: pond.safeMaxTds },
+//     ];
+
+//     const alertTypes = [];
+//     let alertStatus = "normal"; // can escalate to "warning" or "critical"
+//     let alertMessage = "";
+
+//     for (const param of paramsToCheck) {
+//       const result = shouldCreateNewAlert(
+//         param.type,
+//         param.currentValue,
+//         param.safeMin,
+//         param.safeMax
+//       );
+//       if (result) {
+//         // e.g., "ph", "temperature", etc.
+//         alertTypes.push(param.type);
+
+//         // Add the message; we’ll finalize formatting below
+//         alertMessage += `${result.message}, `;
+
+//         // If any param is critical, the entire alert is critical
+//         if (result.status === "critical") {
+//           alertStatus = "critical";
+//         } else if (alertStatus !== "critical" && result.status === "warning") {
+//           alertStatus = "warning";
+//         }
+//       }
+//     }
+
+//     // 5. If no param is out-of-bounds or near bounds, no alert needed
+//     if (!alertTypes.length) {
+//       console.log("No alerts to create.");
+//       return null;
+//     }
+
+//     // Include the pond name in the final alertMessage, remove trailing commas
+//     alertMessage = alertMessage.trim().replace(/,\s*$/, ""); // remove last comma
+//     alertMessage = `${pond.name}: ${alertMessage.charAt(0).toUpperCase()}${alertMessage.slice(1)}`;
+
+//     // 6. Create & save the new alert
+//     const newAlert = new Alert({
+//       alertType: alertTypes.join(", "),
+//       alertMessage,
+//       alertStatus,
+//       alertTime: new Date(),
+//       pondId: pondId,
+//     });
+
+//     console.log("New alert created:", newAlert);
+//     await newAlert.save();
+
+//     // 7. If socket is valid, broadcast the alert to all connected clients
+//     if (socket && typeof socket.emit === "function") {
+//       console.log("Broadcasting alert to all clients...");
+//       socket.emit("alert", {
+//         alertType: newAlert.alertType,
+//         alertStatus: newAlert.alertStatus,
+//         alertMessage: newAlert.alertMessage,
+//         pondId: newAlert.pondId,
+//         timestamp: newAlert.alertTime,
+//       });
+//     } else {
+//       console.warn("Socket.IO server instance is not valid or not provided.");
+//     }
+
+//     // 8. Clean up the returned alert object (omit __v, updatedAt, etc.)
+//     const { __v, updatedAt, ...alertWithoutVAndUpdated } = newAlert.toObject();
+//     return alertWithoutVAndUpdated;
+
+//   } catch (error) {
+//     console.error("Error in createAlert:", error);
+//     throw error;
+//   }
+// };
+
+
+
+
+
 export const createAlert = async (pondId, info, socket) => {
-  console.log("createalert called");
-  // console.log("soket: ", socket);
+  console.log("createAlert called");
+
   try {
+    // 1. Fetch the pond details from DB
     const pond = await Pond.findById(pondId);
     if (!pond) {
       throw new Error("Pond Not Found");
     }
 
+    // 2. (Optional) Throttle check: block if there's an alert in the last 15 mins
+    /*
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+    const recentAlert = await Alert.findOne({
+      pondId: pondId,
+      createdAt: { $gte: fifteenMinutesAgo },
+    });
+    if (recentAlert) {
+      console.log(
+        `Alert throttled: An alert was already issued within the last 15 minutes for pond ${pondId}.`
+      );
+      return null;
+    }
+    */
 
-    // Use `createdAt` instead of `alertTime` if needed
-    // const recentAlert = await Alert.findOne({
-    //   pondId: pondId,
-    //   createdAt: { $gte: fifteenMinutesAgo }, // Check against `createdAt`
-    // });
-
-    // if (recentAlert) {
-    //   console.log(`Alert throttled: An alert was already issued within the last 15 minutes for pond ${pondId}.`);
-    //   return null; // Throttle alert creation
-    // }
+    // 3. Define logic for categorizing an alert
+    const highWarningLimit = 0.15; // 15% near the boundary => "warning"
 
     const shouldCreateNewAlert = (type, currentValue, safeMin, safeMax) => {
-      const belowSafeLimit = currentValue < safeMin;
-      const aboveSafeLimit = currentValue > safeMax;
-      const highWarningLimit = 0.15;
-      const criticalLimit = 0.05;
-      let deviation = 0;
-
-      if (belowSafeLimit) deviation = safeMin - currentValue;
-      if (aboveSafeLimit) deviation = currentValue - safeMax;
-
-      if (belowSafeLimit || aboveSafeLimit) {
-        if (Math.abs(deviation) >= criticalLimit) {
-          return { status: "critical", message: `${type} is ${deviation.toFixed(2)} ${belowSafeLimit ? "below" : "above"} safe limits` };
-        }
-        if (Math.abs(deviation) >= highWarningLimit) {
-          return { status: "warning", message: `${type} is ${deviation.toFixed(2)} ${belowSafeLimit ? "below" : "above"} safe limits` };
-        }
+      // Check if reading is outside the safe boundaries => CRITICAL
+      if (currentValue < safeMin) {
+        const diffBelow = (safeMin - currentValue).toFixed(2);
+        return {
+          status: "critical",
+          message: `${type} is ${diffBelow} below the safe minimum (${safeMin})`,
+        };
+      } else if (currentValue > safeMax) {
+        const diffAbove = (currentValue - safeMax).toFixed(2);
+        return {
+          status: "critical",
+          message: `${type} is ${diffAbove} above the safe maximum (${safeMax})`,
+        };
       }
 
+      // Check if reading is within 15% of min/max => WARNING
+      // If currentValue is within 15% above safeMin
+      const minThreshold = safeMin + safeMin * highWarningLimit;
+      if (currentValue <= minThreshold) {
+        const diffFromMin = (currentValue - safeMin).toFixed(2);
+        return {
+          status: "warning",
+          // E.g., "ph is 0.20 near safe minimum"
+          message: `${type} is ${diffFromMin} near safe minimum`,
+        };
+      }
+
+      // If currentValue is within 15% below safeMax
+      const maxThreshold = safeMax - safeMax * highWarningLimit;
+      if (currentValue >= maxThreshold) {
+        const diffFromMax = (safeMax - currentValue).toFixed(2);
+        return {
+          status: "warning",
+          // E.g., "ph is 0.30 near safe maximum"
+          message: `${type} is ${diffFromMax} near safe maximum`,
+        };
+      }
+
+      // If it's comfortably within the range (not near edges), no alert
       return null;
     };
 
-    const alertTypes = [];
-    let alertStatus = "normal";
-    let alertMessage = ""; // Initialize the alertMessage variable
-
+    // 4. Check each parameter (pH, temperature, etc.)
     const paramsToCheck = [
-      { type: "ph", currentValue: info.ph, safeMin: pond.safeMinPh, safeMax: pond.safeMaxPh },
-      { type: "temperature", currentValue: info.temperature, safeMin: pond.safeMinTemperature, safeMax: pond.safeMaxTemperature },
-      { type: "height", currentValue: info.height, safeMin: pond.safeMinHeight, safeMax: pond.safeMaxHeight },
-      { type: "tds", currentValue: info.tds, safeMin: pond.safeMinTds, safeMax: pond.safeMaxTds },
+      {
+        type: "ph",
+        currentValue: info.ph,
+        safeMin: pond.safeMinPh,
+        safeMax: pond.safeMaxPh,
+      },
+      {
+        type: "temperature",
+        currentValue: info.temperature,
+        safeMin: pond.safeMinTemperature,
+        safeMax: pond.safeMaxTemperature,
+      },
+      {
+        type: "height",
+        currentValue: info.height,
+        safeMin: pond.safeMinHeight,
+        safeMax: pond.safeMaxHeight,
+      },
+      {
+        type: "tds",
+        currentValue: info.tds,
+        safeMin: pond.safeMinTds,
+        safeMax: pond.safeMaxTds,
+      },
     ];
 
-    for (let param of paramsToCheck) {
-      const result = shouldCreateNewAlert(param.type, param.currentValue, param.safeMin, param.safeMax);
+    const alertTypes = [];
+    let alertStatus = "normal"; // can escalate to "warning" or "critical"
+    let alertMessage = "";
+
+    for (const param of paramsToCheck) {
+      const result = shouldCreateNewAlert(
+        param.type,
+        param.currentValue,
+        param.safeMin,
+        param.safeMax
+      );
+
       if (result) {
+        // e.g., "ph", "temperature", etc.
         alertTypes.push(param.type);
+
+        // Add the message; we'll finalize formatting below
         alertMessage += `${result.message}, `;
-        alertStatus = result.status === "critical" ? "critical" : alertStatus;
+
+        // If any param is critical, the entire alert is critical
+        if (result.status === "critical") {
+          alertStatus = "critical";
+        } else if (alertStatus !== "critical" && result.status === "warning") {
+          alertStatus = "warning";
+        }
       }
     }
 
-    // Include the pond name in the alert message
-    if (alertMessage.length > 0) {
-      alertMessage = `${pond.name}: ${alertMessage.charAt(0).toUpperCase() + alertMessage.slice(1).trim().replace(/,\s*$/, "")}`;
-    }
-
+    // 5. If no param is out-of-bounds or near bounds, no alert needed
     if (!alertTypes.length) {
       console.log("No alerts to create.");
       return null;
     }
 
+    // Include the pond name in the final alertMessage, remove trailing commas
+    alertMessage = alertMessage.trim().replace(/,\s*$/, ""); // remove last comma
+    alertMessage = `${pond.name}: ${alertMessage.charAt(0).toUpperCase()}${alertMessage.slice(1)}`;
+
+    // 6. Create & save the new alert
     const newAlert = new Alert({
       alertType: alertTypes.join(", "),
-      alertMessage: alertMessage, // Now includes the pond name
-      alertStatus: alertStatus,
+      alertMessage,
+      alertStatus,
       alertTime: new Date(),
       pondId: pondId,
     });
 
-    console.log("New alert created: ", newAlert);
+    console.log("New alert created:", newAlert);
     await newAlert.save();
 
+    // 7. If socket is valid, broadcast the alert to all connected clients
     if (socket && typeof socket.emit === "function") {
       console.log("Broadcasting alert to all clients...");
       socket.emit("alert", {
@@ -105,7 +305,7 @@ export const createAlert = async (pondId, info, socket) => {
       console.warn("Socket.IO server instance is not valid or not provided.");
     }
 
-    // Exclude __v and updatedAt from the response
+    // 8. Clean up the returned alert object (omit __v, updatedAt, etc.)
     const { __v, updatedAt, ...alertWithoutVAndUpdated } = newAlert.toObject();
     return alertWithoutVAndUpdated;
   } catch (error) {
@@ -113,6 +313,10 @@ export const createAlert = async (pondId, info, socket) => {
     throw error;
   }
 };
+
+
+
+
 // Retrieve all Alerts from the database.
 export const findAll = async (req, res) => {
   try {
